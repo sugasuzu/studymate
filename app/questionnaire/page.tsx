@@ -19,34 +19,6 @@ export default async function QuestionnairePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white dark:from-gray-900 dark:to-gray-800">
-      {/* ヘッダー */}
-      <header className="bg-white dark:bg-gray-900 shadow-sm">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <Link
-              href="/"
-              className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent"
-            >
-              Studymate
-            </Link>
-            <nav className="flex items-center gap-6">
-              <Link
-                href="/"
-                className="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition"
-              >
-                ホーム
-              </Link>
-              <a
-                href="/questionnaire"
-                className="text-blue-600 dark:text-blue-400 font-semibold"
-              >
-                アンケート
-              </a>
-            </nav>
-          </div>
-        </div>
-      </header>
-
       {/* メインコンテンツ */}
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* タイトルセクション */}
@@ -155,20 +127,6 @@ export default async function QuestionnairePage() {
           </p>
         </div>
       </main>
-
-      {/* フッター */}
-      <footer className="bg-gray-900 text-gray-300 py-8 mt-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center">
-            <p className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent mb-2">
-              Studymate
-            </p>
-            <p className="text-sm">
-              &copy; 2025 Studymate. All rights reserved.
-            </p>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }
