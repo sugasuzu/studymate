@@ -1,0 +1,55 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "🔍 Running pre-push checks..."
+
+# Store initial git status
+INITIAL_STATUS=$(git status --porcelain)
+
+# Check formatting
+echo "📝 Checking code formatting..."
+npm run format:check
+FORMAT_EXIT_CODE=$?
+
+if [ $FORMAT_EXIT_CODE -ne 0 ]; then
+    echo "❌ Code formatting issues found!"
+    echo "💡 Run 'npm run format' to fix formatting issues"
+    exit 1
+fi
+
+# Run linting
+echo "🔍 Running linter..."
+npm run lint
+LINT_EXIT_CODE=$?
+
+if [ $LINT_EXIT_CODE -ne 0 ]; then
+    echo "❌ Linting errors found!"
+    echo "💡 Fix linting errors before pushing"
+    exit 1
+fi
+
+# Run build
+echo "🏗️  Running build..."
+npm run build
+BUILD_EXIT_CODE=$?
+
+if [ $BUILD_EXIT_CODE -ne 0 ]; then
+    echo "❌ Build failed!"
+    echo "💡 Fix build errors before pushing"
+    exit 1
+fi
+
+# Check if any files were modified during the checks
+FINAL_STATUS=$(git status --porcelain)
+
+if [ "$INITIAL_STATUS" != "$FINAL_STATUS" ]; then
+    echo "⚠️  WARNING: Files were modified during pre-push checks!"
+    echo "📋 Modified files:"
+    git status --porcelain
+    echo ""
+    echo "🚨 PUSH BLOCKED: Please review and commit these changes first"
+    echo "💡 The automated checks may have fixed some issues"
+    exit 1
+fi
+
+echo "✅ All pre-push checks passed!"
