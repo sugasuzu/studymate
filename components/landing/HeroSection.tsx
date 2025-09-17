@@ -23,13 +23,13 @@ export function HeroSection() {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
-              href="/questionnaire"
+              href="#"
               className="px-8 py-4 bg-gradient-to-r from-purple-600 to-blue-600 text-white font-semibold rounded-lg text-lg hover:opacity-90 transition transform hover:scale-105"
             >
               無料で教材レビューを見る
             </Link>
             <Link
-              href="/questionnaire"
+              href="#"
               className="px-8 py-4 bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-semibold rounded-lg text-lg border-2 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition"
             >
               レビューを投稿する

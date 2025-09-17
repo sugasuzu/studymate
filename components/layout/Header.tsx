@@ -19,33 +19,9 @@ export function Header() {
             </Link>
           </div>
           <div className="hidden md:flex items-center space-x-8">
-            <a
-              href="#features"
-              className="text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400 transition"
-            >
-              特徴
-            </a>
-            <a
-              href="#how-it-works"
-              className="text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400 transition"
-            >
-              使い方
-            </a>
-            <a
-              href="#reviews"
-              className="text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400 transition"
-            >
-              レビュー
-            </a>
             <button className="bg-blue-600 text-white px-5 py-2 rounded-lg hover:bg-blue-700 transition">
               ログイン
             </button>
-            <Link
-              href="/questionnaire"
-              className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-5 py-2 rounded-lg hover:opacity-90 transition"
-            >
-              無料で始める
-            </Link>
           </div>
           <button
             onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -99,7 +75,7 @@ export function Header() {
               ログイン
             </button>
             <Link
-              href="/questionnaire"
+              href="#"
               className="block w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white px-5 py-2 rounded-lg hover:opacity-90 transition text-center"
             >
               無料で始める
