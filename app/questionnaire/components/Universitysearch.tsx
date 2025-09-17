@@ -177,7 +177,9 @@ export function UniversitySearch({
               key={university.school_code}
               type="button"
               role="option"
-              aria-selected={selectedUniversity?.school_code === university.school_code}
+              aria-selected={
+                selectedUniversity?.school_code === university.school_code
+              }
               onClick={() => handleSelectUniversity(university)}
               className="w-full px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors border-b border-gray-100 dark:border-gray-700 last:border-b-0"
             >
