@@ -19,9 +19,12 @@ export function Header() {
             </Link>
           </div>
           <div className="hidden md:flex items-center space-x-8">
-            <button className="bg-blue-600 text-white px-5 py-2 rounded-lg hover:bg-blue-700 transition">
+            <Link
+              href="/auth/login"
+              className="w-full bg-blue-600 text-white px-5 py-2 rounded-lg hover:bg-blue-700 transition"
+            >
               ログイン
-            </button>
+            </Link>
           </div>
           <button
             onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -53,32 +56,11 @@ export function Header() {
       {isMenuOpen && (
         <div className="md:hidden bg-white dark:bg-gray-900 border-t dark:border-gray-800">
           <div className="px-4 py-4 space-y-3">
-            <a
-              href="#features"
-              className="block text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400"
-            >
-              特徴
-            </a>
-            <a
-              href="#how-it-works"
-              className="block text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400"
-            >
-              使い方
-            </a>
-            <a
-              href="#reviews"
-              className="block text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400"
-            >
-              レビュー
-            </a>
-            <button className="w-full bg-blue-600 text-white px-5 py-2 rounded-lg hover:bg-blue-700 transition">
-              ログイン
-            </button>
             <Link
-              href="#"
-              className="block w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white px-5 py-2 rounded-lg hover:opacity-90 transition text-center"
+              href="/auth/login"
+              className="w-full bg-blue-600 text-white px-5 py-2 rounded-lg hover:bg-blue-700 transition"
             >
-              無料で始める
+              ログイン
             </Link>
           </div>
         </div>
