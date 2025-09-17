@@ -129,7 +129,7 @@ export function BarcodeScanner({ onDetected }: BarcodeScannerProps) {
         });
         // Stop the test stream immediately
         stream.getTracks().forEach((track) => track.stop());
-      } catch (permissionError) {
+      } catch {
         throw new Error(
           'カメラへのアクセスが拒否されました。ブラウザの設定でカメラのアクセスを許可してください。'
         );

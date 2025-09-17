@@ -56,7 +56,7 @@ export function ContactForm() {
       } else {
         setError(result.error || '送信に失敗しました');
       }
-    } catch (err) {
+    } catch {
       setError('送信中にエラーが発生しました');
     } finally {
       setIsSubmitting(false);
