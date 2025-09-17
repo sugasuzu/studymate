@@ -1,96 +1,52 @@
-// components/auth/AuthForm.tsx
-'use client';
+// lib/actions/auth.ts
+'use server';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import {
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-  signInWithPopup,
-  GoogleAuthProvider,
-  sendEmailVerification,
-  sendPasswordResetEmail,
-} from 'firebase/auth';
-import { auth } from '../firebase';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
-interface AuthFormProps {
-  mode: 'login' | 'signup' | 'reset';
-  serverAction?: (prevState: any, formData: FormData) => Promise<any>;
+// Firebase Admin SDKなしでユーザープロフィールを管理
+export async function saveUserProfile(
+  userId: string,
+  profileData: any
+) {
+  try {
+    // Firestoreに直接保存（Client SDKを使用）
+    await setDoc(doc(db, 'users', userId), {
+      ...profileData,
+      updatedAt: new Date(),
+    }, { merge: true });
+
+    return { success: true };
+  } catch (error) {
+    console.error('Profile save error:', error);
+    return { 
+      success: false, 
+      error: 'プロフィールの保存に失敗しました' 
+    };
+  }
 }
 
-export function AuthForm({ mode, serverAction }: AuthFormProps) {
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const router = useRouter();
-
-  const handleGoogleAuth = async () => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
-
-      // 初回ログインかチェック
-      const isNewUser =
-        result.user.metadata.creationTime ===
-        result.user.metadata.lastSignInTime;
-
-      if (isNewUser) {
-        router.push('/auth/complete-profile');
-      } else {
-        router.push('/my');
-      }
-    } catch (error: any) {
-      console.error('Google auth error:', error);
-      setError('Googleアカウントでのログインに失敗しました');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleEmailAuth = async (formData: FormData) => {
-    setIsLoading(true);
-    setError(null);
-
-    const email = formData.get('email') as string;
-    const password = formData.get('password') as string;
-
-    try {
-      if (mode === 'signup') {
-        const result = await createUserWithEmailAndPassword(
-          auth,
-          email,
-          password
-        );
-        await sendEmailVerification(result.user);
-        router.push('/auth/verify-email');
-      } else if (mode === 'login') {
-        await signInWithEmailAndPassword(auth, email, password);
-        router.push('/my');
-      } else if (mode === 'reset') {
-        await sendPasswordResetEmail(auth, email);
-        setError('パスワードリセットメールを送信しました');
-      }
-    } catch (error: any) {
-      console.error('Email auth error:', error);
-
-      // Firebaseエラーメッセージの日本語化
-      const errorMessages: Record<string, string> = {
-        'auth/email-already-in-use': 'このメールアドレスは既に使用されています',
-        'auth/invalid-email': '無効なメールアドレスです',
-        'auth/user-not-found': 'ユーザーが見つかりません',
-        'auth/wrong-password': 'パスワードが正しくありません',
-        'auth/weak-password': 'パスワードが弱すぎます',
-        'auth/too-many-requests':
-          'リクエストが多すぎます。しばらく時間をおいてから再度お試しください',
+export async function getUserProfile(userId: string) {
+  try {
+    const docRef = doc(db, 'users', userId);
+    const docSnap = await getDoc(docRef);
+    
+    if (docSnap.exists()) {
+      return { 
+        success: true, 
+        data: docSnap.data() 
       };
-
-      setError(errorMessages[error.code] || 'エラーが発生しました');
-    } finally {
-      setIsLoading(false);
+    } else {
+      return { 
+        success: false, 
+        error: 'ユーザーが見つかりません' 
+      };
     }
-  };
-
-  return { handleGoogleAuth, handleEmailAuth, isLoading, error };
+  } catch (error) {
+    console.error('Profile fetch error:', error);
+    return { 
+      success: false, 
+      error: 'プロフィールの取得に失敗しました' 
+    };
+  }
 }
