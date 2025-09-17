@@ -1,3 +1,5 @@
+// 書籍のバーコード読み取りに関してはサーバーアクションではなくAPI Routerを使う
+
 import { NextRequest, NextResponse } from "next/server";
 
 interface BookInfo {
