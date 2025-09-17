@@ -69,6 +69,7 @@ export default async function ProductList() {
 ```
 
 **SSRの利点**:
+
 - 初回読み込み速度の向上（FCP, LCP最適化）
 - SEO対応の確実性
 - JavaScript無効環境でも動作
@@ -193,7 +194,7 @@ export function ShoppingCart() {
 
 ```typescript
 // ✅ 推奨: Server Actions でデータベース操作
-"use server";
+'use server';
 
 import { db } from '@/lib/firebase';
 import { collection, addDoc, query, where, getDocs } from 'firebase/firestore';
@@ -210,7 +211,7 @@ export async function createQuestionnaire(data: QuestionnaireData) {
     const docRef = await addDoc(collection(db, 'questionnaires'), {
       ...data,
       createdAt: new Date(),
-      status: 'active'
+      status: 'active',
     });
 
     // キャッシュの無効化
@@ -232,9 +233,9 @@ export async function getQuestionnairesByUniversity(universityName: string) {
     );
 
     const querySnapshot = await getDocs(q);
-    const questionnaires = querySnapshot.docs.map(doc => ({
+    const questionnaires = querySnapshot.docs.map((doc) => ({
       id: doc.id,
-      ...doc.data()
+      ...doc.data(),
     }));
 
     return { success: true, data: questionnaires };
@@ -249,7 +250,7 @@ export async function getQuestionnairesByUniversity(universityName: string) {
 
 ```typescript
 // ✅ 推奨: Server Actions で外部API呼び出し
-"use server";
+'use server';
 
 import { headers } from 'next/headers';
 import { ratelimit } from '@/lib/ratelimit';
@@ -270,10 +271,10 @@ export async function searchUniversities(keyword: string) {
       {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${process.env.EDU_DATA_API_TOKEN}`,
+          Authorization: `Bearer ${process.env.EDU_DATA_API_TOKEN}`,
           'Content-Type': 'application/json',
         },
-        next: { revalidate: 3600 } // 1時間キャッシュ
+        next: { revalidate: 3600 }, // 1時間キャッシュ
       }
     );
 
@@ -294,7 +295,7 @@ export async function searchUniversities(keyword: string) {
 
 ```typescript
 // ✅ 推奨: Server Actions でフォーム処理
-"use server";
+'use server';
 
 import { z } from 'zod';
 import { redirect } from 'next/navigation';
@@ -335,7 +336,7 @@ export async function submitContactForm(formData: FormData) {
     console.error('Contact form submission failed:', error);
     return {
       success: false,
-      errors: { _form: ['送信に失敗しました。再度お試しください。'] }
+      errors: { _form: ['送信に失敗しました。再度お試しください。'] },
     };
   }
 }
@@ -469,11 +470,24 @@ export default Button;
 ```typescript
 // ✅ 動詞で始まる分かりやすい名前
 // lib/actions/questionnaires.ts
-export async function createQuestionnaire(data: QuestionnaireData) { /* ... */ }
-export async function updateQuestionnaire(id: string, data: Partial<QuestionnaireData>) { /* ... */ }
-export async function deleteQuestionnaire(id: string) { /* ... */ }
-export async function getQuestionnaireById(id: string) { /* ... */ }
-export async function getQuestionnairesByUser(userId: string) { /* ... */ }
+export async function createQuestionnaire(data: QuestionnaireData) {
+  /* ... */
+}
+export async function updateQuestionnaire(
+  id: string,
+  data: Partial<QuestionnaireData>
+) {
+  /* ... */
+}
+export async function deleteQuestionnaire(id: string) {
+  /* ... */
+}
+export async function getQuestionnaireById(id: string) {
+  /* ... */
+}
+export async function getQuestionnairesByUser(userId: string) {
+  /* ... */
+}
 ```
 
 #### ページファイル
@@ -516,9 +530,9 @@ const users = await getUsers();
 const questionnaires = await getQuestionnaires();
 
 // ❌ 悪い例
-const user_name = 'suzuki';        // snake_case は避ける
-const UserName = 'suzuki';         // PascalCase は変数では使わない
-const visible = true;              // Boolean値にプレフィックスなし
+const user_name = 'suzuki'; // snake_case は避ける
+const UserName = 'suzuki'; // PascalCase は変数では使わない
+const visible = true; // Boolean値にプレフィックスなし
 const userData = await getUsers(); // 単数形で配列を表現
 ```
 
@@ -634,20 +648,22 @@ interface ReadonlyConfig {
 
 // ✅ 配列の型安全性
 const VALID_ROLES = ['admin', 'user', 'guest'] as const;
-type ValidRole = typeof VALID_ROLES[number]; // 'admin' | 'user' | 'guest'
+type ValidRole = (typeof VALID_ROLES)[number]; // 'admin' | 'user' | 'guest'
 ```
 
 ### エラー処理の型定義
 
 ```typescript
 // ✅ Result型パターンの使用
-type Result<T, E = Error> = {
-  success: true;
-  data: T;
-} | {
-  success: false;
-  error: E;
-};
+type Result<T, E = Error> =
+  | {
+      success: true;
+      data: T;
+    }
+  | {
+      success: false;
+      error: E;
+    };
 
 async function fetchUser(id: string): Promise<Result<User, string>> {
   try {
@@ -663,7 +679,7 @@ const result = await fetchUser('123');
 if (result.success) {
   console.log(result.data.name); // 型安全
 } else {
-  console.error(result.error);   // 型安全
+  console.error(result.error); // 型安全
 }
 ```
 
@@ -746,7 +762,7 @@ export function QuestionnaireForm() {
 // 静的データ（1時間キャッシュ）
 export async function getUniversityList() {
   const response = await fetch('https://api.edu-data.jp/universities', {
-    next: { revalidate: 3600 }
+    next: { revalidate: 3600 },
   });
   return response.json();
 }
@@ -754,7 +770,7 @@ export async function getUniversityList() {
 // 動的データ（キャッシュなし）
 export async function getUserQuestionnaires(userId: string) {
   const response = await fetch(`/api/users/${userId}/questionnaires`, {
-    cache: 'no-store'
+    cache: 'no-store',
   });
   return response.json();
 }
@@ -910,21 +926,31 @@ export function Dashboard({ user }: { user: User }) {
 import { z } from 'zod';
 
 const QuestionnaireSchema = z.object({
-  universityName: z.string()
+  universityName: z
+    .string()
     .min(1, '大学名は必須です')
     .max(100, '大学名は100文字以内で入力してください'),
-  age: z.number()
+  age: z
+    .number()
     .int('年齢は整数で入力してください')
     .min(15, '年齢は15歳以上で入力してください')
     .max(100, '年齢は100歳以下で入力してください'),
-  email: z.string()
+  email: z
+    .string()
     .email('有効なメールアドレスを入力してください')
-    .refine(email => !email.includes('+'), 'プラス記号を含むメールアドレスは使用できません'),
-  materials: z.array(z.object({
-    name: z.string().min(1, '教材名は必須です'),
-    review: z.string().min(10, 'レビューは10文字以上で入力してください'),
-    barcode: z.string().optional(),
-  })).min(1, '教材を少なくとも1つは入力してください'),
+    .refine(
+      (email) => !email.includes('+'),
+      'プラス記号を含むメールアドレスは使用できません'
+    ),
+  materials: z
+    .array(
+      z.object({
+        name: z.string().min(1, '教材名は必須です'),
+        review: z.string().min(10, 'レビューは10文字以上で入力してください'),
+        barcode: z.string().optional(),
+      })
+    )
+    .min(1, '教材を少なくとも1つは入力してください'),
 });
 
 export async function createQuestionnaire(formData: FormData) {
@@ -996,7 +1022,7 @@ export function generateEmailTemplate(userName: string, message: string) {
 
 ```typescript
 // ✅ Server Actions は自動的にCSRF保護される
-"use server";
+'use server';
 
 import { auth } from '@/lib/auth';
 import { headers } from 'next/headers';
@@ -1037,10 +1063,12 @@ const requiredEnvVars = [
 ] as const;
 
 function validateEnv() {
-  const missing = requiredEnvVars.filter(envVar => !process.env[envVar]);
+  const missing = requiredEnvVars.filter((envVar) => !process.env[envVar]);
 
   if (missing.length > 0) {
-    throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
+    throw new Error(
+      `Missing required environment variables: ${missing.join(', ')}`
+    );
   }
 }
 
@@ -1135,19 +1163,21 @@ export default function GlobalError({
 
 ```typescript
 // ✅ 統一されたエラー処理パターン
-"use server";
+'use server';
 
 import { z } from 'zod';
 import { logger } from '@/lib/logger';
 
-type ActionResult<T> = {
-  success: true;
-  data: T;
-} | {
-  success: false;
-  error: string;
-  code?: string;
-};
+type ActionResult<T> =
+  | {
+      success: true;
+      data: T;
+    }
+  | {
+      success: false;
+      error: string;
+      code?: string;
+    };
 
 export async function createQuestionnaire(
   formData: FormData
@@ -1162,7 +1192,7 @@ export async function createQuestionnaire(
       return {
         success: false,
         error: '入力内容に不備があります',
-        code: 'VALIDATION_ERROR'
+        code: 'VALIDATION_ERROR',
       };
     }
 
@@ -1172,9 +1202,8 @@ export async function createQuestionnaire(
     // 成功レスポンス
     return {
       success: true,
-      data: { id: questionnaire.id }
+      data: { id: questionnaire.id },
     };
-
   } catch (error) {
     // エラーログ
     logger.error('Failed to create questionnaire', {
@@ -1188,7 +1217,7 @@ export async function createQuestionnaire(
       return {
         success: false,
         error: '入力内容を確認してください',
-        code: 'VALIDATION_ERROR'
+        code: 'VALIDATION_ERROR',
       };
     }
 
@@ -1196,14 +1225,15 @@ export async function createQuestionnaire(
       return {
         success: false,
         error: 'この操作を実行する権限がありません',
-        code: 'PERMISSION_DENIED'
+        code: 'PERMISSION_DENIED',
       };
     }
 
     return {
       success: false,
-      error: '一時的なエラーが発生しました。しばらくしてから再度お試しください。',
-      code: 'INTERNAL_ERROR'
+      error:
+        '一時的なエラーが発生しました。しばらくしてから再度お試しください。',
+      code: 'INTERNAL_ERROR',
     };
   }
 }
@@ -1300,12 +1330,15 @@ describe('createQuestionnaire', () => {
     const formData = new FormData();
     formData.append('universityName', 'テスト大学');
     formData.append('age', '20');
-    formData.append('materials', JSON.stringify([
-      {
-        name: 'システム英単語',
-        review: 'とても良い教材でした。',
-      }
-    ]));
+    formData.append(
+      'materials',
+      JSON.stringify([
+        {
+          name: 'システム英単語',
+          review: 'とても良い教材でした。',
+        },
+      ])
+    );
 
     const result = await createQuestionnaire(formData);
 
@@ -1387,14 +1420,19 @@ test.describe('Questionnaire Flow', () => {
     await page.fill('[data-testid="university-name"]', 'テスト大学');
     await page.fill('[data-testid="age"]', '20');
     await page.fill('[data-testid="material-name-0"]', 'システム英単語');
-    await page.fill('[data-testid="material-review-0"]', 'とても良い教材でした。');
+    await page.fill(
+      '[data-testid="material-review-0"]',
+      'とても良い教材でした。'
+    );
 
     // 送信
     await page.click('[data-testid="submit-button"]');
 
     // 成功メッセージを確認
     await expect(page.locator('[data-testid="success-message"]')).toBeVisible();
-    await expect(page.locator('[data-testid="success-message"]')).toContainText('正常に送信されました');
+    await expect(page.locator('[data-testid="success-message"]')).toContainText(
+      '正常に送信されました'
+    );
   });
 
   test('should show validation errors for invalid input', async ({ page }) => {
@@ -1409,7 +1447,9 @@ test.describe('Questionnaire Flow', () => {
 
     // エラーメッセージを確認
     await expect(page.locator('[data-testid="error-message"]')).toBeVisible();
-    await expect(page.locator('[data-testid="error-message"]')).toContainText('入力内容');
+    await expect(page.locator('[data-testid="error-message"]')).toContainText(
+      '入力内容'
+    );
   });
 });
 ```
@@ -1420,7 +1460,7 @@ test.describe('Questionnaire Flow', () => {
 
 ### TSDoc を使用した関数ドキュメント
 
-```typescript
+````typescript
 /**
  * ユーザーのアンケートデータを作成し、データベースに保存します。
  *
@@ -1456,7 +1496,7 @@ export async function createQuestionnaire(
 ): Promise<ActionResult<{ id: string }>> {
   // 実装
 }
-```
+````
 
 ### 複雑なロジックのコメント
 
@@ -1468,7 +1508,9 @@ export function calculateRecommendationScore(
   // Step 1: 基本スコアの計算（大学レベルマッチング）
   // 同じ偏差値帯なら+30点、近い場合は段階的に減点
   let score = 0;
-  const levelDiff = Math.abs(userProfile.universityLevel - material.targetLevel);
+  const levelDiff = Math.abs(
+    userProfile.universityLevel - material.targetLevel
+  );
   if (levelDiff === 0) {
     score += 30;
   } else if (levelDiff <= 1) {
@@ -1481,20 +1523,24 @@ export function calculateRecommendationScore(
   // 同一教科なら+25点、関連教科なら+10点
   if (userProfile.targetSubjects.includes(material.subject)) {
     score += 25;
-  } else if (getRelatedSubjects(userProfile.targetSubjects).includes(material.subject)) {
+  } else if (
+    getRelatedSubjects(userProfile.targetSubjects).includes(material.subject)
+  ) {
     score += 10;
   }
 
   // Step 3: レビュー品質による重み付け
   // 高評価かつ詳細なレビューがあるものを優先
-  const avgRating = material.reviews.reduce((sum, r) => sum + r.rating, 0) / material.reviews.length;
+  const avgRating =
+    material.reviews.reduce((sum, r) => sum + r.rating, 0) /
+    material.reviews.length;
   const reviewQualityBonus = Math.floor(avgRating * 5); // 最大25点
   score += reviewQualityBonus;
 
   // Step 4: 実績による信頼度補正
   // 同じ大学の合格者からのレビューがあれば大幅ボーナス
   const sameUniversityReviews = material.reviews.filter(
-    r => r.userUniversity === userProfile.targetUniversity
+    (r) => r.userUniversity === userProfile.targetUniversity
   );
   if (sameUniversityReviews.length > 0) {
     score += 40; // 同じ大学からのレビューは高く評価
@@ -1595,24 +1641,29 @@ useEffect(() => {
 
 ```markdown
 ## 良い点
+
 - Server Actionsを適切に使用してAPI Routesを回避している点が素晴らしいです
 - エラーハンドリングが統一されており、ユーザビリティを考慮されています
 
 ## 改善提案
 
 ### アーキテクチャ
+
 - この component に `"use client"` は必要でしょうか？ユーザーインタラクションがないため、SSRで実装できそうです
 - [該当行](link) に具体的な変更案を提示
 
 ### セキュリティ
+
 - ユーザー入力をそのままDOMに挿入するのは XSS のリスクがあります
 - DOMPurify または適切なエスケープ処理を追加することをお勧めします
 
 ### パフォーマンス
+
 - [該当行](link) で重い計算が毎回実行されています
 - useMemo でメモ化することで改善できます
 
 ### 型安全性
+
 - `any` 型の使用は避け、適切な型定義を追加してください
 - [TypeScript handbook](link) を参考に改善案を検討してみてください
 ```
@@ -1623,6 +1674,7 @@ useEffect(() => {
 ## マージ承認基準
 
 ### 必須項目（すべて満たす必要がある）
+
 - [ ] アーキテクチャ指針に準拠している（SSR優先、Server Actions使用）
 - [ ] セキュリティ脆弱性がない（XSS、SQLインジェクション対策など）
 - [ ] 型安全性が保たれている（`any` 型の不適切な使用がない）
@@ -1630,6 +1682,7 @@ useEffect(() => {
 - [ ] エラーハンドリングが適切に実装されている
 
 ### 推奨項目（可能な限り満たす）
+
 - [ ] パフォーマンスが考慮されている（不要な再レンダリング、重い計算など）
 - [ ] アクセシビリティが考慮されている
 - [ ] コメント・ドキュメンテーションが適切
@@ -1676,30 +1729,34 @@ useEffect(() => {
 
 ## 🔄 バージョン管理
 
-| バージョン | 更新日 | 変更内容 |
-|----------|--------|---------|
-| v1.0 | 2025-01-17 | 初版作成 - SSR優先アーキテクチャ、Server Actions活用指針を策定 |
+| バージョン | 更新日     | 変更内容                                                       |
+| ---------- | ---------- | -------------------------------------------------------------- |
+| v1.0       | 2025-01-17 | 初版作成 - SSR優先アーキテクチャ、Server Actions活用指針を策定 |
 
 ---
 
 ## 📚 参考リソース
 
 ### 公式ドキュメント
+
 - [Next.js App Router Documentation](https://nextjs.org/docs/app)
 - [React Server Components](https://react.dev/blog/2023/03/22/react-labs-what-we-have-been-working-on-march-2023#react-server-components)
 - [TypeScript Handbook](https://www.typescriptlang.org/docs/)
 
 ### ベストプラクティス
+
 - [Next.js Performance Best Practices](https://nextjs.org/docs/app/building-your-application/optimizing)
 - [React Performance Optimization](https://react.dev/learn/render-and-commit#optimizing-performance)
 - [Web.dev Core Web Vitals](https://web.dev/vitals/)
 
 ### セキュリティ
+
 - [OWASP Top 10](https://owasp.org/www-project-top-ten/)
 - [Next.js Security Headers](https://nextjs.org/docs/app/api-reference/next-config-js/headers)
 - [Content Security Policy](https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP)
 
 ### テスト
+
 - [Testing Library Documentation](https://testing-library.com/docs/)
 - [Playwright Documentation](https://playwright.dev/docs/intro)
 - [Vitest Documentation](https://vitest.dev/guide/)

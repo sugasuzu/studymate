@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { useState, useEffect, useCallback, useRef } from "react";
-import { searchUniversities } from "@/lib/actions/universities";
-import { useDebounce } from "@/hooks/useDebounce";
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { searchUniversities } from '@/lib/actions/universities';
+import { useDebounce } from '@/hooks/useDebounce';
 
 interface University {
   school_code: string;
@@ -17,47 +17,52 @@ interface UniversitySearchProps {
   initialUniversities?: University[];
 }
 
-export function UniversitySearch({ 
-  onUniversitySelect, 
-  initialUniversities = [] 
+export function UniversitySearch({
+  onUniversitySelect,
+  initialUniversities = [],
 }: UniversitySearchProps) {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [universities, setUniversities] = useState<University[]>(initialUniversities);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [universities, setUniversities] =
+    useState<University[]>(initialUniversities);
   const [isLoading, setIsLoading] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
-  const [selectedUniversity, setSelectedUniversity] = useState<University | null>(null);
+  const [selectedUniversity, setSelectedUniversity] =
+    useState<University | null>(null);
   const [error, setError] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
   // Server Actionを使用した検索
-  const performSearch = useCallback(async (keyword: string) => {
-    if (keyword.length < 2) {
-      setUniversities(initialUniversities);
-      return;
-    }
-
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const result = await searchUniversities(keyword);
-      
-      if (result.success) {
-        setUniversities(result.data.universities);
-      } else {
-        setError(result.error);
-        setUniversities([]);
+  const performSearch = useCallback(
+    async (keyword: string) => {
+      if (keyword.length < 2) {
+        setUniversities(initialUniversities);
+        return;
       }
-    } catch (err) {
-      console.error("University search failed:", err);
-      setError("検索中にエラーが発生しました");
-      setUniversities([]);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [initialUniversities]);
+
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const result = await searchUniversities(keyword);
+
+        if (result.success) {
+          setUniversities(result.data.universities);
+        } else {
+          setError(result.error);
+          setUniversities([]);
+        }
+      } catch (err) {
+        console.error('University search failed:', err);
+        setError('検索中にエラーが発生しました');
+        setUniversities([]);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [initialUniversities]
+  );
 
   useEffect(() => {
     if (debouncedSearchTerm && !selectedUniversity) {
@@ -67,19 +72,27 @@ export function UniversitySearch({
       setUniversities(initialUniversities);
       setShowDropdown(false);
     }
-  }, [debouncedSearchTerm, performSearch, initialUniversities, selectedUniversity]);
+  }, [
+    debouncedSearchTerm,
+    performSearch,
+    initialUniversities,
+    selectedUniversity,
+  ]);
 
   // 外部クリックでドロップダウンを閉じる
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(event.target as Node)
+      ) {
         setShowDropdown(false);
       }
     };
 
-    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener('mousedown', handleClickOutside);
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
 
@@ -99,8 +112,8 @@ export function UniversitySearch({
 
   return (
     <div className="relative" ref={containerRef}>
-      <label 
-        htmlFor="university" 
+      <label
+        htmlFor="university"
         className="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2"
       >
         大学名 <span className="text-red-500">*</span>
@@ -121,24 +134,24 @@ export function UniversitySearch({
         />
         {isLoading && (
           <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-            <svg 
-              className="animate-spin h-5 w-5 text-blue-500" 
-              xmlns="http://www.w3.org/2000/svg" 
-              fill="none" 
+            <svg
+              className="animate-spin h-5 w-5 text-blue-500"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
               viewBox="0 0 24 24"
               aria-label="検索中"
             >
-              <circle 
-                className="opacity-25" 
-                cx="12" 
-                cy="12" 
-                r="10" 
-                stroke="currentColor" 
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
                 strokeWidth="4"
               />
-              <path 
-                className="opacity-75" 
-                fill="currentColor" 
+              <path
+                className="opacity-75"
+                fill="currentColor"
                 d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
               />
             </svg>
@@ -152,10 +165,10 @@ export function UniversitySearch({
           {error}
         </div>
       )}
-      
+
       {/* ドロップダウン */}
       {showDropdown && universities.length > 0 && (
-        <div 
+        <div
           id="university-dropdown"
           role="listbox"
           className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-60 overflow-y-auto"
@@ -186,19 +199,25 @@ export function UniversitySearch({
           ))}
         </div>
       )}
-      
-      {showDropdown && searchTerm.length >= 2 && universities.length === 0 && !isLoading && (
-        <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg p-4">
-          <p className="text-gray-500 dark:text-gray-400 text-center">
-            該当する大学が見つかりませんでした
-          </p>
-        </div>
-      )}
+
+      {showDropdown &&
+        searchTerm.length >= 2 &&
+        universities.length === 0 &&
+        !isLoading && (
+          <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg p-4">
+            <p className="text-gray-500 dark:text-gray-400 text-center">
+              該当する大学が見つかりませんでした
+            </p>
+          </div>
+        )}
 
       {selectedUniversity && (
         <div className="mt-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
           <p className="text-sm text-blue-800 dark:text-blue-200">
-            選択中: <span className="font-semibold">{selectedUniversity.school_name}</span>
+            選択中:{' '}
+            <span className="font-semibold">
+              {selectedUniversity.school_name}
+            </span>
             {selectedUniversity.homepage && (
               <span className="ml-2 text-xs">
                 ({new URL(selectedUniversity.homepage).hostname})

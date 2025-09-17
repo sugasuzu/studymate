@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState } from 'react';
 
 /**
  * デバウンスされた値を返すカスタムフック
- * 
+ *
  * @param value - デバウンスする値
  * @param delay - 遅延時間（ミリ秒）
  * @returns デバウンスされた値

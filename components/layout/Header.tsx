@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import Link from "next/link";
+import { useState } from 'react';
+import Link from 'next/link';
 
 export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -11,7 +11,7 @@ export function Header() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center">
-            <Link 
+            <Link
               href="/"
               className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent"
             >
@@ -40,7 +40,7 @@ export function Header() {
             <button className="bg-blue-600 text-white px-5 py-2 rounded-lg hover:bg-blue-700 transition">
               ログイン
             </button>
-            <Link 
+            <Link
               href="/questionnaire"
               className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-5 py-2 rounded-lg hover:opacity-90 transition"
             >
@@ -65,8 +65,8 @@ export function Header() {
                 strokeWidth={2}
                 d={
                   isMenuOpen
-                    ? "M6 18L18 6M6 6l12 12"
-                    : "M4 6h16M4 12h16M4 18h16"
+                    ? 'M6 18L18 6M6 6l12 12'
+                    : 'M4 6h16M4 12h16M4 18h16'
                 }
               />
             </svg>
@@ -98,7 +98,7 @@ export function Header() {
             <button className="w-full bg-blue-600 text-white px-5 py-2 rounded-lg hover:bg-blue-700 transition">
               ログイン
             </button>
-            <Link 
+            <Link
               href="/questionnaire"
               className="block w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white px-5 py-2 rounded-lg hover:opacity-90 transition text-center"
             >
