@@ -148,11 +148,21 @@ export function QuestionnaireForm({ initialUniversities = [] }: QuestionnaireFor
     setIsSubmitting(true);
 
     try {
-      // Firestoreに保存
-      const docRef = await addDoc(collection(db, "questionnaires"), {
+      // 保存データの準備
+      const submissionData = {
         ...formData,
         submittedAt: new Date(),
+      };
+
+      // ISBNコードが含まれていることを確認（デバッグ用）
+      console.log("Saving questionnaire data:", {
+        materialsCount: submissionData.materials?.length || 0,
+        materialsWithISBN: submissionData.materials?.filter(m => m.materialBarcode).length || 0,
+        isbns: submissionData.materials?.map(m => ({ name: m.materialName, isbn: m.materialBarcode })) || []
       });
+
+      // Firestoreに保存
+      const docRef = await addDoc(collection(db, "questionnaires"), submissionData);
       
       console.log("Document written with ID: ", docRef.id);
       setIsSuccess(true);

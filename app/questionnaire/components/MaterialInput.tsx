@@ -9,6 +9,19 @@ interface Material {
   materialReview: string;
 }
 
+interface BookInfo {
+  isbn?: string;
+  title?: string;
+  authors?: string[];
+  publisher?: string;
+  publishedDate?: string;
+  description?: string;
+  imageUrl?: string;
+  price?: number;
+  currency?: string;
+  source?: string;
+}
+
 interface MaterialInputProps {
   material: Material;
   index: number;
@@ -26,8 +39,14 @@ export function MaterialInput({
 }: MaterialInputProps) {
   const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
 
-  const handleBarcodeDetected = (code: string) => {
+  const handleBarcodeDetected = (code: string, productInfo?: BookInfo) => {
     onMaterialChange(index, "materialBarcode", code);
+
+    // If we got book information, auto-fill the material name
+    if (productInfo && productInfo.title) {
+      onMaterialChange(index, "materialName", productInfo.title);
+    }
+
     setShowBarcodeScanner(false);
   };
 
@@ -80,9 +99,14 @@ export function MaterialInput({
           <BarcodeScanner onDetected={handleBarcodeDetected} />
         )}
         {material.materialBarcode && (
-          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-            バーコード: {material.materialBarcode}
-          </p>
+          <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded">
+            <p className="text-sm text-blue-800 dark:text-blue-200">
+              <svg className="w-4 h-4 inline mr-1" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+              ISBN: <span className="font-mono">{material.materialBarcode}</span>
+            </p>
+          </div>
         )}
       </div>
 
