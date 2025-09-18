@@ -1,11 +1,17 @@
 // hooks/useAuth.tsx
 'use client';
 
-import { useEffect, useState, createContext, useContext, useCallback } from 'react';
-import { 
-  User, 
+import {
+  useEffect,
+  useState,
+  createContext,
+  useContext,
+  useCallback,
+} from 'react';
+import {
+  User,
   onAuthStateChanged,
-  signOut as firebaseSignOut 
+  signOut as firebaseSignOut,
 } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { auth } from '@/lib/firebase';
@@ -35,7 +41,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const createSession = useCallback(async (user: User) => {
     try {
       const idToken = await user.getIdToken();
-      
+
       const response = await fetch('/api/auth/session', {
         method: 'POST',
         headers: {
@@ -57,7 +63,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
    */
   const refreshSession = useCallback(async () => {
     if (user) {
-      const idToken = await user.getIdToken(true); // 強制的に新しいトークンを取得
+      await user.getIdToken(true); // 強制的に新しいトークンを取得
       await createSession(user);
     }
   }, [user, createSession]);
@@ -78,20 +84,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setUser(user);
-      
+
       if (user) {
         await createSession(user);
-        
+
         // トークンの自動更新（50分ごと）
-        const interval = setInterval(async () => {
-          await refreshSession();
-        }, 50 * 60 * 1000);
-        
+        const interval = setInterval(
+          async () => {
+            await refreshSession();
+          },
+          50 * 60 * 1000
+        );
+
         return () => clearInterval(interval);
       } else {
         await fetch('/api/auth/session', { method: 'DELETE' });
       }
-      
+
       setLoading(false);
     });
 

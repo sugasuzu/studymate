@@ -19,7 +19,7 @@ export function ResetPasswordForm() {
     try {
       await sendPasswordResetEmail(auth, email);
       setIsSuccess(true);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Password reset error:', error);
 
       const errorMessages: Record<string, string> = {
@@ -29,7 +29,8 @@ export function ResetPasswordForm() {
           'リクエストが多すぎます。しばらくお待ちください',
       };
 
-      setError(errorMessages[error.code] || 'エラーが発生しました');
+      const errorCode = error && typeof error === 'object' && 'code' in error ? (error as { code: string }).code : '';
+      setError(errorMessages[errorCode] || 'エラーが発生しました');
     } finally {
       setIsLoading(false);
     }

@@ -10,7 +10,7 @@ let keysExpireAt = 0;
  */
 async function getFirebasePublicKeys(): Promise<Record<string, string>> {
   const now = Date.now();
-  
+
   // キャッシュが有効な場合は返す
   if (publicKeys && now < keysExpireAt) {
     return publicKeys;
@@ -20,23 +20,23 @@ async function getFirebasePublicKeys(): Promise<Record<string, string>> {
     const response = await fetch(
       'https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com'
     );
-    
+
     if (!response.ok) {
       throw new Error('Failed to fetch public keys');
     }
 
     const keys = await response.json();
-    
+
     // Cache-Controlヘッダーから有効期限を取得
     const cacheControl = response.headers.get('cache-control');
     const maxAge = cacheControl?.match(/max-age=(\d+)/)?.[1];
-    
+
     if (maxAge) {
       keysExpireAt = now + parseInt(maxAge) * 1000;
     } else {
       keysExpireAt = now + 3600 * 1000; // デフォルト1時間
     }
-    
+
     publicKeys = keys;
     return keys;
   } catch (error) {
@@ -101,7 +101,7 @@ export async function verifyIdTokenEdge(token: string) {
       email_verified: payload.email_verified as boolean | undefined,
       name: payload.name as string | undefined,
       picture: payload.picture as string | undefined,
-      firebase: payload.firebase as any,
+      firebase: payload.firebase as Record<string, unknown>,
     };
   } catch (error) {
     console.error('Token verification error:', error);

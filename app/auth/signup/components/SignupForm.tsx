@@ -67,7 +67,7 @@ export function SignupForm() {
       );
       await sendEmailVerification(userCredential.user);
       router.push('/auth/verify-email');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Signup error:', error);
 
       const errorMessages: Record<string, string> = {
@@ -76,7 +76,8 @@ export function SignupForm() {
         'auth/weak-password': 'パスワードが弱すぎます',
       };
 
-      setError(errorMessages[error.code] || '登録に失敗しました');
+      const errorCode = error && typeof error === 'object' && 'code' in error ? (error as { code: string }).code : '';
+      setError(errorMessages[errorCode] || '登録に失敗しました');
     } finally {
       setIsLoading(false);
     }
@@ -90,7 +91,7 @@ export function SignupForm() {
       const provider = new GoogleAuthProvider();
       await signInWithPopup(auth, provider);
       router.push('/auth/complete-profile');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Google signup error:', error);
       setError('Googleアカウントでの登録に失敗しました');
     } finally {

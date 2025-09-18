@@ -8,7 +8,7 @@ export const metadata: Metadata = {
     'Studymateへのお問い合わせはこちらから。ご質問・ご要望・不具合報告など、お気軽にご連絡ください。',
 };
 
-export function ContactPage() {
+function ContactPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white dark:from-gray-900 dark:to-gray-800">
       {/* メインコンテンツ */}

@@ -15,7 +15,7 @@ export interface CurrentUser {
  */
 export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   const headersList = await headers();
-  
+
   const uid = headersList.get('x-user-uid');
   const email = headersList.get('x-user-email');
   const emailVerified = headersList.get('x-user-email-verified') === 'true';

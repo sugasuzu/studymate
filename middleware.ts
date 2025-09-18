@@ -12,11 +12,7 @@ const protectedRoutes = [
 ];
 
 // 認証済みユーザーがアクセスできないルート
-const authRoutes = [
-  '/auth/login',
-  '/auth/signup',
-  '/auth/reset-password',
-];
+const authRoutes = ['/auth/login', '/auth/signup', '/auth/reset-password'];
 
 // メール認証が必要なルート
 const emailVerificationRequired = [
@@ -25,17 +21,13 @@ const emailVerificationRequired = [
 ];
 
 // プロフィール設定が必要なルート（除外するパス）
-const profileNotRequired = [
-  '/auth/complete-profile',
-  '/auth/logout',
-  '/api/*',
-];
+const profileNotRequired = ['/auth/complete-profile', '/auth/logout', '/api/*'];
 
 /**
  * パスがパターンにマッチするかチェック
  */
 function matchesPattern(pathname: string, patterns: string[]): boolean {
-  return patterns.some(pattern => {
+  return patterns.some((pattern) => {
     const regex = new RegExp('^' + pattern.replace(/\*/g, '.*') + '$');
     return regex.test(pathname);
   });
@@ -61,7 +53,7 @@ export async function middleware(request: NextRequest) {
 
   // セッションクッキーを取得
   const session = request.cookies.get('session');
-  
+
   // セッションの検証
   let user = null;
   if (session?.value) {
@@ -70,7 +62,9 @@ export async function middleware(request: NextRequest) {
     } catch (error) {
       console.error('Session verification error in middleware:', error);
       // 無効なセッションの場合はクッキーを削除
-      const response = NextResponse.redirect(new URL('/auth/login', request.url));
+      const response = NextResponse.redirect(
+        new URL('/auth/login', request.url)
+      );
       response.cookies.delete('session');
       return response;
     }
@@ -81,8 +75,12 @@ export async function middleware(request: NextRequest) {
   const hasProfile = !!user?.name;
   const isProtectedRoute = matchesPattern(pathname, protectedRoutes);
   const isAuthRoute = matchesPattern(pathname, authRoutes);
-  const needsEmailVerification = matchesPattern(pathname, emailVerificationRequired);
-  const needsProfile = isProtectedRoute && !matchesPattern(pathname, profileNotRequired);
+  const needsEmailVerification = matchesPattern(
+    pathname,
+    emailVerificationRequired
+  );
+  const needsProfile =
+    isProtectedRoute && !matchesPattern(pathname, profileNotRequired);
 
   // 未認証ユーザーが保護されたルートにアクセスしようとした場合
   if (!isAuthenticated && isProtectedRoute) {
@@ -103,7 +101,9 @@ export async function middleware(request: NextRequest) {
 
   // プロフィール未設定の場合（初回ログイン時）
   if (isAuthenticated && !hasProfile && needsProfile) {
-    return NextResponse.redirect(new URL('/auth/complete-profile', request.url));
+    return NextResponse.redirect(
+      new URL('/auth/complete-profile', request.url)
+    );
   }
 
   // ユーザー情報をヘッダーに追加（Server Componentsで使用可能）
@@ -113,7 +113,10 @@ export async function middleware(request: NextRequest) {
     requestHeaders.set('x-user-email', user.email || '');
     requestHeaders.set('x-user-email-verified', String(isEmailVerified));
     // 日本語を含む可能性があるためBase64エンコード
-    requestHeaders.set('x-user-name', user.name ? Buffer.from(user.name, 'utf-8').toString('base64') : '');
+    requestHeaders.set(
+      'x-user-name',
+      user.name ? Buffer.from(user.name, 'utf-8').toString('base64') : ''
+    );
   }
 
   return NextResponse.next({

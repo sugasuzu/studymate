@@ -35,10 +35,7 @@ export async function POST(request: NextRequest) {
     }
 
     // レスポンスを作成
-    const response = NextResponse.json(
-      { success: true },
-      { status: 200 }
-    );
+    const response = NextResponse.json({ success: true }, { status: 200 });
 
     // IDトークンをセッションクッキーとして設定
     response.cookies.set(SESSION_COOKIE_NAME, idToken, SESSION_COOKIE_OPTIONS);
@@ -57,10 +54,7 @@ export async function POST(request: NextRequest) {
  * セッションを削除
  */
 export async function DELETE() {
-  const response = NextResponse.json(
-    { success: true },
-    { status: 200 }
-  );
+  const response = NextResponse.json({ success: true }, { status: 200 });
 
   // セッションクッキーを削除
   response.cookies.delete(SESSION_COOKIE_NAME);
@@ -73,12 +67,9 @@ export async function DELETE() {
  */
 export async function GET(request: NextRequest) {
   const session = request.cookies.get(SESSION_COOKIE_NAME);
-  
+
   if (!session?.value) {
-    return NextResponse.json(
-      { authenticated: false },
-      { status: 200 }
-    );
+    return NextResponse.json({ authenticated: false }, { status: 200 });
   }
 
   // Edge Runtimeで動作する簡易チェック
@@ -96,7 +87,7 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json(
-      { 
+      {
         authenticated: true,
         uid: payload.sub,
         email: payload.email,
@@ -104,9 +95,6 @@ export async function GET(request: NextRequest) {
       { status: 200 }
     );
   } catch {
-    return NextResponse.json(
-      { authenticated: false },
-      { status: 200 }
-    );
+    return NextResponse.json({ authenticated: false }, { status: 200 });
   }
 }

@@ -59,7 +59,7 @@ export function VerifyEmailStatus() {
         await sendEmailVerification(auth.currentUser);
         setResendMessage('認証メールを再送信しました');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Resend email error:', error);
       setResendMessage('メールの再送信に失敗しました');
     } finally {

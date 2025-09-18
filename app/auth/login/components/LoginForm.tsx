@@ -27,7 +27,7 @@ export function LoginForm() {
     try {
       await signInWithEmailAndPassword(auth, email, password);
       router.push('/my');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Login error:', error);
 
       const errorMessages: Record<string, string> = {
@@ -39,7 +39,8 @@ export function LoginForm() {
         'auth/user-disabled': 'このアカウントは無効化されています',
       };
 
-      setError(errorMessages[error.code] || 'ログインに失敗しました');
+      const errorCode = error && typeof error === 'object' && 'code' in error ? (error as { code: string }).code : '';
+      setError(errorMessages[errorCode] || 'ログインに失敗しました');
     } finally {
       setIsLoading(false);
     }
@@ -63,7 +64,7 @@ export function LoginForm() {
       } else {
         router.push('/my');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Google login error:', error);
       setError('Googleアカウントでのログインに失敗しました');
     } finally {

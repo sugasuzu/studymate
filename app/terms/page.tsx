@@ -7,7 +7,7 @@ export const metadata: Metadata = {
     'Studymateの利用規約です。本サービスをご利用いただく前に必ずお読みください。',
 };
 
-export function TermsPage() {
+function TermsPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white dark:from-gray-900 dark:to-gray-800">
       {/* メインコンテンツ */}

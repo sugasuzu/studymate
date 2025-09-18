@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation';
 
 export default async function MyPage() {
   const user = await getCurrentUser();
-  
+
   // ミドルウェアでも保護されているが、二重チェック
   if (!user) {
     redirect('/auth/login');
@@ -16,7 +16,7 @@ export default async function MyPage() {
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-8">
           ようこそ、{user.name || user.email}さん
         </h1>
-        
+
         {/* ダッシュボードコンテンツ */}
       </main>
     </div>

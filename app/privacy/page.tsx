@@ -7,7 +7,7 @@ export const metadata: Metadata = {
     'Studymateのプライバシーポリシーです。個人情報の取り扱いについて説明しています。',
 };
 
-export function PrivacyPolicyPage() {
+function PrivacyPolicyPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white dark:from-gray-900 dark:to-gray-800">
       {/* メインコンテンツ */}

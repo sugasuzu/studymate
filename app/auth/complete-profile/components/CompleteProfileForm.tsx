@@ -48,7 +48,7 @@ export function CompleteProfileForm() {
       });
 
       router.push('/my');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Profile completion error:', error);
       setError('プロフィールの設定に失敗しました');
     } finally {
