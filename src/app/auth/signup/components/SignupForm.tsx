@@ -87,7 +87,7 @@ export function SignupForm() {
       // 常に/myへリダイレクト
       window.location.replace('/my');
     } catch (error) {
-      console.error(error)
+      console.error(error);
       setIsLoading(false);
     }
   };
@@ -126,7 +126,7 @@ export function SignupForm() {
       // 認証メール送信画面へリダイレクト
       router.push('/auth/verify-email');
     } catch (error) {
-      console.error(error)
+      console.error(error);
       setIsLoading(false);
     }
   };

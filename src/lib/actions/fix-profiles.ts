@@ -6,12 +6,12 @@ import { db } from '@/lib/firebase';
 export async function fixIncompleteProfiles() {
   try {
     const usersSnapshot = await getDocs(collection(db, 'users'));
-    
+
     const updates = [];
-    
+
     for (const userDoc of usersSnapshot.docs) {
       const data = userDoc.data();
-      
+
       // 大学情報がないのにprofileCompletedがtrueの場合
       if (data.profileCompleted && !data.universityName) {
         updates.push(
@@ -22,9 +22,9 @@ export async function fixIncompleteProfiles() {
         );
       }
     }
-    
+
     await Promise.all(updates);
-    
+
     return {
       success: true,
       updated: updates.length,
