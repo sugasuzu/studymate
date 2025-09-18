@@ -223,19 +223,6 @@ function LoginFormContent() {
         </div>
 
         <div className="flex items-center justify-between">
-          <label className="flex items-center">
-            <input
-              type="checkbox"
-              checked={rememberMe}
-              onChange={(e) => setRememberMe(e.target.checked)}
-              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-              disabled={isLoading}
-            />
-            <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
-              ログイン状態を保持
-            </span>
-          </label>
-
           <Link
             href="/auth/reset-password"
             className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
