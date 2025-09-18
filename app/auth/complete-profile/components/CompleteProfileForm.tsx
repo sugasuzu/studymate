@@ -1,12 +1,20 @@
 // app/auth/complete-profile/components/CompleteProfileForm.tsx
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { updateProfile } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
 import { UniversitySearch } from '@/app/questionnaire/components/Universitysearch';
+
+interface University {
+  school_code: string;
+  school_name: string;
+  prefecture?: string;
+  homepage?: string;
+  address?: string;
+}
 
 export function CompleteProfileForm() {
   const [displayName, setDisplayName] = useState('');
@@ -15,11 +23,118 @@ export function CompleteProfileForm() {
   const [graduationYear, setGraduationYear] = useState('');
   const [isStudent, setIsStudent] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+  const [isChecking, setIsChecking] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [validationErrors, setValidationErrors] = useState<
+    Record<string, string>
+  >({});
+  const [canSkip, setCanSkip] = useState(false);
   const router = useRouter();
+
+  useEffect(() => {
+    checkExistingProfile();
+  }, []);
+
+  const checkExistingProfile = async () => {
+    setIsChecking(true);
+    try {
+      const user = auth.currentUser;
+      if (!user) {
+        console.log('No current user found, redirecting to login');
+        router.push('/auth/login');
+        return;
+      }
+
+      console.log('Current user:', user.uid, user.email);
+
+      // Firestoreから既存のプロフィールを取得
+      const userDoc = await getDoc(doc(db, 'users', user.uid));
+
+      if (userDoc.exists()) {
+        const data = userDoc.data();
+        console.log('Existing profile data:', data);
+
+        // プロフィールが既に完成している場合
+        if (data.profileCompleted) {
+          console.log('Profile already completed, redirecting to /my');
+          router.push('/my');
+          return;
+        }
+
+        // 部分的にデータがある場合は事前入力
+        if (data.displayName) setDisplayName(data.displayName);
+        if (data.universityName) setUniversityName(data.universityName);
+        if (data.universityDepartment) setDepartment(data.universityDepartment);
+        if (data.graduationYear) setGraduationYear(String(data.graduationYear));
+        if (typeof data.isStudent === 'boolean') setIsStudent(data.isStudent);
+
+        // Googleログインユーザーはスキップ可能
+        setCanSkip(user.providerData[0]?.providerId === 'google.com');
+      } else {
+        console.log('Creating initial user document');
+        // 新規ユーザーの場合、初期データを作成
+        await setDoc(doc(db, 'users', user.uid), {
+          uid: user.uid,
+          email: user.email,
+          emailVerified: user.emailVerified,
+          profileCompleted: false,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+      }
+
+      // Googleアカウントから情報を取得
+      if (user.displayName && !displayName) {
+        setDisplayName(user.displayName);
+      }
+    } catch (error) {
+      console.error('Error checking profile:', error);
+      setError('プロフィールの取得に失敗しました');
+    } finally {
+      setIsChecking(false);
+    }
+  };
+
+  const validateForm = (): boolean => {
+    const errors: Record<string, string> = {};
+
+    if (!displayName.trim()) {
+      errors.displayName = '表示名は必須です';
+    }
+
+    if (!universityName.trim()) {
+      errors.universityName = '大学名は必須です';
+    }
+
+    if (!department.trim()) {
+      errors.department = '学部・学科は必須です';
+    }
+
+    if (!graduationYear) {
+      errors.graduationYear = '卒業年度は必須です';
+    }
+
+    setValidationErrors(errors);
+
+    if (Object.keys(errors).length > 0) {
+      console.log('Validation errors:', errors);
+      setError('必須項目を入力してください');
+      return false;
+    }
+
+    return true;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('Form submitted');
+
+    // バリデーション
+    if (!validateForm()) {
+      console.log('Validation failed');
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
 
@@ -29,36 +144,109 @@ export function CompleteProfileForm() {
         throw new Error('ユーザーが見つかりません');
       }
 
+      console.log('Updating profile for user:', user.uid);
+      console.log('Form data:', {
+        displayName,
+        universityName,
+        department,
+        graduationYear,
+        isStudent,
+      });
+
       // Firebase Authのプロフィール更新
       await updateProfile(user, {
         displayName: displayName,
       });
+      console.log('Firebase Auth profile updated');
 
       // Firestoreにプロフィール情報を保存
-      await setDoc(doc(db, 'users', user.uid), {
+      const profileData = {
         displayName,
         universityName,
-        department,
+        universityDepartment: department,
         graduationYear: parseInt(graduationYear),
         isStudent,
         email: user.email,
         photoURL: user.photoURL,
-        createdAt: new Date(),
+        emailVerified: user.emailVerified,
+        profileCompleted: true, // プロフィール完成フラグを設定
         updatedAt: new Date(),
-      });
+      };
 
+      console.log('Saving to Firestore:', profileData);
+      await setDoc(
+        doc(db, 'users', user.uid),
+        profileData,
+        { merge: true } // 既存のデータとマージ
+      );
+      console.log('Firestore updated successfully');
+
+      // セッションを更新
+      await user.getIdToken(true);
+      console.log('Token refreshed');
+
+      // 成功したらリダイレクト
+      console.log('Redirecting to /my');
       router.push('/my');
-    } catch (error: unknown) {
+    } catch (error: any) {
       console.error('Profile completion error:', error);
-      setError('プロフィールの設定に失敗しました');
+      setError(error.message || 'プロフィールの設定に失敗しました');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleUniversitySelect = (university: { school_name: string }) => {
-    setUniversityName(university.school_name);
+  const handleSkip = async () => {
+    setIsLoading(true);
+    console.log('Skip button clicked');
+    try {
+      const user = auth.currentUser;
+      if (!user) {
+        throw new Error('ユーザーが見つかりません');
+      }
+
+      // 最低限の情報だけ保存
+      await setDoc(
+        doc(db, 'users', user.uid),
+        {
+          displayName: user.displayName || 'ユーザー',
+          email: user.email,
+          photoURL: user.photoURL,
+          emailVerified: user.emailVerified,
+          profileCompleted: false, // スキップの場合は未完成のまま
+          skippedAt: new Date(), // スキップした記録
+          updatedAt: new Date(),
+        },
+        { merge: true }
+      );
+
+      router.push('/my');
+    } catch (error: any) {
+      console.error('Skip error:', error);
+      setError(error.message || 'スキップ処理に失敗しました');
+    } finally {
+      setIsLoading(false);
+    }
   };
+
+  const handleUniversitySelect = (university: University) => {
+    console.log('University selected:', university);
+    setUniversityName(university.school_name);
+    // バリデーションエラーをクリア
+    setValidationErrors((prev) => {
+      const newErrors = { ...prev };
+      delete newErrors.universityName;
+      return newErrors;
+    });
+  };
+
+  if (isChecking) {
+    return (
+      <div className="flex justify-center py-8">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -80,12 +268,31 @@ export function CompleteProfileForm() {
           type="text"
           id="displayName"
           value={displayName}
-          onChange={(e) => setDisplayName(e.target.value)}
-          className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
+          onChange={(e) => {
+            setDisplayName(e.target.value);
+            // バリデーションエラーをクリア
+            if (validationErrors.displayName) {
+              setValidationErrors((prev) => {
+                const newErrors = { ...prev };
+                delete newErrors.displayName;
+                return newErrors;
+              });
+            }
+          }}
+          className={`w-full px-4 py-2 border ${
+            validationErrors.displayName
+              ? 'border-red-500'
+              : 'border-gray-300 dark:border-gray-600'
+          } rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white`}
           placeholder="例：山田太郎"
           required
           disabled={isLoading}
         />
+        {validationErrors.displayName && (
+          <p className="mt-1 text-sm text-red-600">
+            {validationErrors.displayName}
+          </p>
+        )}
         <p className="mt-1 text-xs text-gray-500">
           レビューに表示される名前です
         </p>
@@ -118,12 +325,6 @@ export function CompleteProfileForm() {
                     strokeLinejoin="round"
                     strokeWidth={2}
                     d="M12 14l9-5-9-5-9 5 9 5z"
-                  />
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"
                   />
                 </svg>
                 <span className="font-medium text-gray-900 dark:text-white">
@@ -166,7 +367,14 @@ export function CompleteProfileForm() {
       </div>
 
       {/* 大学名 */}
-      <UniversitySearch onUniversitySelect={handleUniversitySelect} />
+      <div>
+        <UniversitySearch onUniversitySelect={handleUniversitySelect} />
+        {validationErrors.universityName && (
+          <p className="mt-1 text-sm text-red-600">
+            {validationErrors.universityName}
+          </p>
+        )}
+      </div>
 
       {/* 学部・学科 */}
       <div>
@@ -180,12 +388,31 @@ export function CompleteProfileForm() {
           type="text"
           id="department"
           value={department}
-          onChange={(e) => setDepartment(e.target.value)}
-          className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
+          onChange={(e) => {
+            setDepartment(e.target.value);
+            // バリデーションエラーをクリア
+            if (validationErrors.department) {
+              setValidationErrors((prev) => {
+                const newErrors = { ...prev };
+                delete newErrors.department;
+                return newErrors;
+              });
+            }
+          }}
+          className={`w-full px-4 py-2 border ${
+            validationErrors.department
+              ? 'border-red-500'
+              : 'border-gray-300 dark:border-gray-600'
+          } rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white`}
           placeholder="例：経済学部 経済学科"
           required
           disabled={isLoading}
         />
+        {validationErrors.department && (
+          <p className="mt-1 text-sm text-red-600">
+            {validationErrors.department}
+          </p>
+        )}
       </div>
 
       {/* 卒業年度 */}
@@ -200,8 +427,22 @@ export function CompleteProfileForm() {
         <select
           id="graduationYear"
           value={graduationYear}
-          onChange={(e) => setGraduationYear(e.target.value)}
-          className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
+          onChange={(e) => {
+            setGraduationYear(e.target.value);
+            // バリデーションエラーをクリア
+            if (validationErrors.graduationYear) {
+              setValidationErrors((prev) => {
+                const newErrors = { ...prev };
+                delete newErrors.graduationYear;
+                return newErrors;
+              });
+            }
+          }}
+          className={`w-full px-4 py-2 border ${
+            validationErrors.graduationYear
+              ? 'border-red-500'
+              : 'border-gray-300 dark:border-gray-600'
+          } rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white`}
           required
           disabled={isLoading}
         >
@@ -215,26 +456,63 @@ export function CompleteProfileForm() {
             );
           })}
         </select>
+        {validationErrors.graduationYear && (
+          <p className="mt-1 text-sm text-red-600">
+            {validationErrors.graduationYear}
+          </p>
+        )}
       </div>
 
       {/* 送信ボタン */}
       <div className="flex gap-4">
-        <button
-          type="button"
-          onClick={() => router.push('/my')}
-          className="flex-1 px-6 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition font-semibold"
-          disabled={isLoading}
-        >
-          スキップ
-        </button>
+        {canSkip && (
+          <button
+            type="button"
+            onClick={handleSkip}
+            className="flex-1 px-6 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition font-semibold"
+            disabled={isLoading}
+          >
+            スキップ
+          </button>
+        )}
         <button
           type="submit"
           disabled={isLoading}
           className="flex-1 px-8 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg text-lg hover:opacity-90 transition transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
         >
-          {isLoading ? '保存中...' : 'プロフィールを完成'}
+          {isLoading ? (
+            <span className="flex items-center justify-center">
+              <svg
+                className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                ></circle>
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                ></path>
+              </svg>
+              保存中...
+            </span>
+          ) : (
+            'プロフィールを完成'
+          )}
         </button>
       </div>
+
+      <p className="text-xs text-center text-gray-500 dark:text-gray-400">
+        プロフィールは後から「マイページ」で変更できます
+      </p>
     </form>
   );
 }
