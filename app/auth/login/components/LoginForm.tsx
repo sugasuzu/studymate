@@ -39,7 +39,10 @@ export function LoginForm() {
         'auth/user-disabled': 'このアカウントは無効化されています',
       };
 
-      const errorCode = error && typeof error === 'object' && 'code' in error ? (error as { code: string }).code : '';
+      const errorCode =
+        error && typeof error === 'object' && 'code' in error
+          ? (error as { code: string }).code
+          : '';
       setError(errorMessages[errorCode] || 'ログインに失敗しました');
     } finally {
       setIsLoading(false);

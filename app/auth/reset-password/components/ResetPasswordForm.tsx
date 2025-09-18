@@ -29,7 +29,10 @@ export function ResetPasswordForm() {
           'リクエストが多すぎます。しばらくお待ちください',
       };
 
-      const errorCode = error && typeof error === 'object' && 'code' in error ? (error as { code: string }).code : '';
+      const errorCode =
+        error && typeof error === 'object' && 'code' in error
+          ? (error as { code: string }).code
+          : '';
       setError(errorMessages[errorCode] || 'エラーが発生しました');
     } finally {
       setIsLoading(false);

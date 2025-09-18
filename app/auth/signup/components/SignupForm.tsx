@@ -76,7 +76,10 @@ export function SignupForm() {
         'auth/weak-password': 'パスワードが弱すぎます',
       };
 
-      const errorCode = error && typeof error === 'object' && 'code' in error ? (error as { code: string }).code : '';
+      const errorCode =
+        error && typeof error === 'object' && 'code' in error
+          ? (error as { code: string }).code
+          : '';
       setError(errorMessages[errorCode] || '登録に失敗しました');
     } finally {
       setIsLoading(false);

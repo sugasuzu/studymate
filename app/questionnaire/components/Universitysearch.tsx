@@ -82,7 +82,12 @@ export function UniversitySearch({
       setUniversities(initialUniversities);
       setShowDropdown(false);
     }
-  }, [debouncedSearchTerm, performSearch, selectedUniversity, initialUniversities]);
+  }, [
+    debouncedSearchTerm,
+    performSearch,
+    selectedUniversity,
+    initialUniversities,
+  ]);
 
   // 外部クリックでドロップダウンを閉じる
   useEffect(() => {

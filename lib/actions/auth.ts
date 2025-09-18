@@ -5,7 +5,10 @@ import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 // Firebase Admin SDKなしでユーザープロフィールを管理
-export async function saveUserProfile(userId: string, profileData: Record<string, unknown>) {
+export async function saveUserProfile(
+  userId: string,
+  profileData: Record<string, unknown>
+) {
   try {
     // Firestoreに直接保存（Client SDKを使用）
     await setDoc(
