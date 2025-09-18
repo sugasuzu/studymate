@@ -1,57 +1,31 @@
 // app/auth/signup/components/SignupForm.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   createUserWithEmailAndPassword,
   sendEmailVerification,
-  signInWithRedirect,
-  getRedirectResult,
+  signInWithPopup,
   GoogleAuthProvider,
 } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
+import { doc, setDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { IoEye, IoEyeOff } from 'react-icons/io5';
 
 export function SignupForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreeToTerms, setAgreeToTerms] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const router = useRouter();
-
-  // Googleサインアップのリダイレクト結果を処理
-  useEffect(() => {
-    const handleRedirectResult = async () => {
-      try {
-        const result = await getRedirectResult(auth);
-        if (result) {
-          setIsLoading(true);
-          console.log('Google signup successful:', result.user.uid);
-
-          // 初回ログインかチェック
-          const isNewUser =
-            result.user.metadata.creationTime ===
-            result.user.metadata.lastSignInTime;
-
-          if (isNewUser) {
-            router.push('/auth/complete-profile');
-          } else {
-            router.push('/my');
-          }
-        }
-      } catch (error: unknown) {
-        console.error('Google signup redirect error:', error);
-        setError('Googleアカウントでの登録に失敗しました');
-        setIsLoading(false);
-      }
-    };
-
-    handleRedirectResult();
-  }, [router]);
 
   const validateForm = (): boolean => {
     const errors: Record<string, string> = {};
@@ -62,10 +36,8 @@ export function SignupForm() {
 
     if (!password) {
       errors.password = 'パスワードは必須です';
-    } else if (password.length < 8) {
-      errors.password = 'パスワードは8文字以上で入力してください';
-    } else if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password)) {
-      errors.password = 'パスワードは大文字・小文字・数字を含む必要があります';
+    } else if (password.length < 6) {
+      errors.password = 'パスワードは6文字以上で入力してください';
     }
 
     if (password !== confirmPassword) {
@@ -91,12 +63,31 @@ export function SignupForm() {
     setError(null);
 
     try {
+      // ユーザーアカウント作成
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         email,
         password
       );
-      await sendEmailVerification(userCredential.user);
+
+      // ユーザー情報をFirestoreに保存
+      await setDoc(doc(db, 'users', userCredential.user.uid), {
+        email: userCredential.user.email,
+        createdAt: new Date(),
+        emailVerified: false,
+        profileCompleted: false,
+      });
+
+      // カスタムアクションコード設定でメール認証リンクを送信
+      const actionCodeSettings = {
+        // メール認証後のリダイレクトURL
+        url: `${window.location.origin}/auth/verify-email?continueUrl=/auth/complete-profile`,
+        handleCodeInApp: true,
+      };
+
+      await sendEmailVerification(userCredential.user, actionCodeSettings);
+
+      // 認証メール送信画面へリダイレクト
       router.push('/auth/verify-email');
     } catch (error: unknown) {
       console.error('Signup error:', error);
@@ -105,6 +96,8 @@ export function SignupForm() {
         'auth/email-already-in-use': 'このメールアドレスは既に使用されています',
         'auth/invalid-email': 'メールアドレスが正しくありません',
         'auth/weak-password': 'パスワードが弱すぎます',
+        'auth/operation-not-allowed':
+          'メール/パスワード認証が無効になっています',
       };
 
       const errorCode =
@@ -123,11 +116,47 @@ export function SignupForm() {
 
     try {
       const provider = new GoogleAuthProvider();
-      // ポップアップではなくリダイレクトを使用してCORSエラーを回避
-      await signInWithRedirect(auth, provider);
+      const result = await signInWithPopup(auth, provider);
+
+      // 初回ログインかチェック
+      const isNewUser =
+        result.user.metadata.creationTime ===
+        result.user.metadata.lastSignInTime;
+
+      // ユーザー情報をFirestoreに保存/更新
+      await setDoc(
+        doc(db, 'users', result.user.uid),
+        {
+          email: result.user.email,
+          displayName: result.user.displayName,
+          photoURL: result.user.photoURL,
+          emailVerified: true, // Googleアカウントはメール認証済み
+          profileCompleted: !isNewUser,
+          updatedAt: new Date(),
+        },
+        { merge: true }
+      );
+
+      if (isNewUser) {
+        router.push('/auth/complete-profile');
+      } else {
+        router.push('/my');
+      }
     } catch (error: unknown) {
       console.error('Google signup error:', error);
-      setError('Googleアカウントでの登録に失敗しました');
+
+      if (error && typeof error === 'object' && 'code' in error) {
+        const errorCode = (error as { code: string }).code;
+        if (errorCode === 'auth/popup-closed-by-user') {
+          setError('ログインがキャンセルされました');
+        } else if (errorCode === 'auth/cancelled-popup-request') {
+          return;
+        } else {
+          setError('Googleアカウントでの登録に失敗しました');
+        }
+      } else {
+        setError('登録に失敗しました');
+      }
       setIsLoading(false);
     }
   };
@@ -211,17 +240,30 @@ export function SignupForm() {
           >
             パスワード <span className="text-red-500">*</span>
           </label>
-          <input
-            type="password"
-            id="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
-            required
-            disabled={isLoading}
-          />
+          <div className="relative">
+            <input
+              type={showPassword ? "text" : "password"}
+              id="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full px-4 py-2 pr-12 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
+              required
+              disabled={isLoading}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+            >
+              {showPassword ? (
+                <IoEyeOff className="w-5 h-5" />
+              ) : (
+                <IoEye className="w-5 h-5" />
+              )}
+            </button>
+          </div>
           <p className="mt-1 text-xs text-gray-500">
-            8文字以上、大文字・小文字・数字を含む
+            6文字以上
           </p>
           {fieldErrors.password && (
             <p className="mt-1 text-sm text-red-600">{fieldErrors.password}</p>
@@ -235,15 +277,28 @@ export function SignupForm() {
           >
             パスワード（確認） <span className="text-red-500">*</span>
           </label>
-          <input
-            type="password"
-            id="confirmPassword"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
-            required
-            disabled={isLoading}
-          />
+          <div className="relative">
+            <input
+              type={showConfirmPassword ? "text" : "password"}
+              id="confirmPassword"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              className="w-full px-4 py-2 pr-12 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
+              required
+              disabled={isLoading}
+            />
+            <button
+              type="button"
+              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+            >
+              {showConfirmPassword ? (
+                <IoEyeOff className="w-5 h-5" />
+              ) : (
+                <IoEye className="w-5 h-5" />
+              )}
+            </button>
+          </div>
           {fieldErrors.confirmPassword && (
             <p className="mt-1 text-sm text-red-600">
               {fieldErrors.confirmPassword}
