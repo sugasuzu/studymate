@@ -3,146 +3,104 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { verifySessionCookieEdge } from './src/lib/auth-edge';
 
-// TODO: Future use - Firestoreから直接ユーザー情報を取得する関数（Edge Runtime対応）
-// 現在は使用されていないが、将来のプロフィールチェック機能で使用予定
-// async function getUserProfileStatus(uid: string): Promise<{
-//   profileCompleted: boolean;
-// }> {
-//   try {
-//     // Firebase REST APIを使用（Edge Runtimeで動作）
-//     const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
-//     const response = await fetch(
-//       `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}`,
-//       {
-//         headers: {
-//           Authorization: `Bearer ${process.env.FIREBASE_SERVER_KEY}`, // サービスアカウントキーが必要
-//         },
-//       }
-//     );
+// 認証が必要なパス
+const PROTECTED_PATHS = ['/my', '/questionnaire', '/auth/complete-profile'];
 
-//     if (!response.ok) {
-//       return { profileCompleted: false };
-//     }
-
-//     const data = await response.json();
-//     return {
-//       profileCompleted: data.fields?.profileCompleted?.booleanValue || false,
-//     };
-//   } catch (error) {
-//     console.error('Error fetching user profile:', error);
-//     return { profileCompleted: false };
-//   }
-// }
+// 認証済みユーザーがアクセスできないパス（認証ページ）
+const AUTH_PAGES = ['/auth/login', '/auth/signup', '/auth/reset-password'];
 
 export async function middleware(request: NextRequest) {
-  const session = request.cookies.get('session');
-  const pathname = request.nextUrl.pathname;
+  const { pathname } = request.nextUrl;
 
-  // 認証不要なパス
-  const publicPaths = [
-    '/',
-    '/auth/login',
-    '/auth/signup',
-    '/auth/reset-password',
-    '/auth/verify-email',
-    '/terms',
-    '/privacy',
-    '/contact',
-  ];
-
-  // 完全に公開されているパスかチェック
-  const isPublicPath = publicPaths.some((path) => pathname.startsWith(path));
-
-  // メール認証関連のパラメータがある場合は通す
+  // 静的ファイルやAPIはスキップ
   if (
-    pathname === '/auth/verify-email' &&
-    request.nextUrl.searchParams.has('oobCode')
+    pathname.includes('/_next') ||
+    pathname.includes('/api') ||
+    pathname.includes('.')
   ) {
     return NextResponse.next();
   }
 
+  const session = request.cookies.get('session');
+  const isProtectedPath = PROTECTED_PATHS.some((path) =>
+    pathname.startsWith(path)
+  );
+  const isAuthPage = AUTH_PAGES.some((path) => pathname.startsWith(path));
+
   // セッションがない場合
-  if (!session) {
-    // 保護されたパスにアクセスしようとしている場合
-    if (!isPublicPath) {
+  if (!session?.value) {
+    // 保護されたパスならログインへリダイレクト
+    if (isProtectedPath) {
       const url = new URL('/auth/login', request.url);
       url.searchParams.set('redirect', pathname);
       return NextResponse.redirect(url);
     }
+    // 認証ページや公開ページはそのまま通す
     return NextResponse.next();
   }
 
-  // セッションがある場合、トークンを検証
+  // セッションがある場合、検証
   try {
     const decodedToken = await verifySessionCookieEdge(session.value);
 
     if (!decodedToken) {
-      // トークンが無効な場合
-      if (!isPublicPath) {
+      // 無効なセッションをクリア
+      const response = NextResponse.next();
+      response.cookies.delete('session');
+
+      // 保護されたパスの場合はログインへリダイレクト
+      if (isProtectedPath) {
         const url = new URL('/auth/login', request.url);
         url.searchParams.set('redirect', pathname);
         return NextResponse.redirect(url);
       }
-      return NextResponse.next();
+
+      return response;
     }
 
-    // ユーザー情報をヘッダーに追加
-    const requestHeaders = new Headers(request.headers);
-    requestHeaders.set('x-user-uid', decodedToken.uid);
-    requestHeaders.set('x-user-email', decodedToken.email || '');
-    requestHeaders.set(
-      'x-user-email-verified',
-      String(decodedToken.email_verified || false)
-    );
-    requestHeaders.set(
-      'x-user-name',
-      encodeURIComponent(decodedToken.name || '')
-    );
+    // ========== 認証済みユーザーの処理 ==========
 
-    // プロフィール完成チェックが必要なパス
-    const requiresCompleteProfile = ['/my'];
-
-    // プロフィール設定ページ自体へのアクセスは許可
-    if (pathname === '/auth/complete-profile') {
-      return NextResponse.next({
-        request: {
-          headers: requestHeaders,
-        },
-      });
+    // 認証ページへのアクセスをブロック
+    if (isAuthPage) {
+      console.log(
+        '[Middleware] Authenticated user trying to access auth page, redirecting to /my'
+      );
+      return NextResponse.redirect(new URL('/my', request.url));
     }
 
-    // プロフィール完成が必要なパスにアクセスしようとしている場合
-    if (requiresCompleteProfile.some((path) => pathname.startsWith(path))) {
-      // メール未認証の場合
-      if (!decodedToken.email_verified) {
-        return NextResponse.redirect(
-          new URL('/auth/verify-email', request.url)
-        );
+    // メール未認証の場合の処理
+    if (isProtectedPath && !decodedToken.email_verified) {
+      // verify-emailページ自体へのアクセスは許可
+      if (pathname === '/auth/verify-email') {
+        return NextResponse.next();
       }
-
-      // プロフィール未完成チェックは一旦削除
-      // フロントエンド側でプロフィール状態をチェックして適切にハンドリングする
+      // その他の保護されたページはverify-emailへリダイレクト
+      console.log(
+        '[Middleware] Email not verified, redirecting to verify-email'
+      );
+      return NextResponse.redirect(new URL('/auth/verify-email', request.url));
     }
 
-    return NextResponse.next({
-      request: {
-        headers: requestHeaders,
-      },
-    });
+    // すべての条件をクリアした場合は通す
+    return NextResponse.next();
   } catch (error) {
-    console.error('Middleware error:', error);
+    console.error('[Middleware] Session verification error:', error);
 
-    // エラーが発生した場合、安全のためログインページへ
-    if (!isPublicPath) {
+    // エラーの場合はセッションをクリアして処理を続行
+    const response = NextResponse.next();
+    response.cookies.delete('session');
+
+    // 保護されたパスの場合はログインへリダイレクト
+    if (isProtectedPath) {
       const url = new URL('/auth/login', request.url);
       url.searchParams.set('redirect', pathname);
       return NextResponse.redirect(url);
     }
 
-    return NextResponse.next();
+    return response;
   }
 }
 
 export const config = {
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
 };

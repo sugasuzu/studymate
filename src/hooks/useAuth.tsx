@@ -1,4 +1,4 @@
-// hooks/useAuth.tsx
+// src/hooks/useAuth.tsx
 'use client';
 
 import {
@@ -20,14 +20,14 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   signOut: () => Promise<void>;
-  refreshSession: () => Promise<void>;
+  createSession: (user: User) => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
   signOut: async () => {},
-  refreshSession: async () => {},
+  createSession: async () => false,
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -36,9 +36,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   /**
-   * IDトークンをセッションクッキーとして保存
+   * セッションクッキーを作成
    */
-  const createSession = useCallback(async (user: User) => {
+  const createSession = useCallback(async (user: User): Promise<boolean> => {
     try {
       const idToken = await user.getIdToken();
 
@@ -50,35 +50,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         body: JSON.stringify({ idToken }),
       });
 
-      if (!response.ok) {
-        console.error('Failed to create session');
-      }
+      return response.ok;
     } catch (error) {
       console.error('Session creation error:', error);
+      return false;
     }
   }, []);
-
-  /**
-   * セッションをリフレッシュ（トークンを更新）
-   */
-  const refreshSession = useCallback(async () => {
-    if (user) {
-      try {
-        await user.getIdToken(true); // 強制的に新しいトークンを取得
-        await createSession(user);
-      } catch (error) {
-        console.error('Session refresh error:', error);
-      }
-    }
-  }, [user, createSession]);
 
   /**
    * サインアウト
    */
   const signOut = useCallback(async () => {
     try {
+      // Firebaseからサインアウト
       await firebaseSignOut(auth);
+
+      // セッションクッキーを削除
       await fetch('/api/auth/session', { method: 'DELETE' });
+
+      // トップページへリダイレクト
       router.push('/');
     } catch (error) {
       console.error('Sign out error:', error);
@@ -86,69 +76,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [router]);
 
   useEffect(() => {
-    let intervalId: NodeJS.Timeout | null = null;
-
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      // ユーザー状態を更新
+      console.log('[useAuth] Auth state changed:', user?.uid);
       setUser(user);
 
-      // 既存のインターバルをクリア
-      if (intervalId) {
-        clearInterval(intervalId);
-        intervalId = null;
-      }
-
       if (user) {
-        try {
-          // セッション作成
-          await createSession(user);
-
-          // トークンの自動更新（50分ごと）
-          intervalId = setInterval(
-            async () => {
-              console.log('Refreshing token...');
-              try {
-                const newToken = await user.getIdToken(true);
-                await fetch('/api/auth/session', {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json',
-                  },
-                  body: JSON.stringify({ idToken: newToken }),
-                });
-              } catch (error) {
-                console.error('Token refresh error:', error);
-              }
-            },
-            50 * 60 * 1000
-          );
-        } catch (error) {
-          console.error('Session setup error:', error);
-        }
-      } else {
-        // ユーザーがログアウトした場合
-        try {
-          await fetch('/api/auth/session', { method: 'DELETE' });
-        } catch (error) {
-          console.error('Session deletion error:', error);
-        }
+        // 新しいユーザーまたはトークンが更新された場合、セッションを作成/更新
+        await createSession(user);
       }
 
-      // 必ずloadingをfalseに設定
       setLoading(false);
     });
 
-    // クリーンアップ
-    return () => {
-      unsubscribe();
-      if (intervalId) {
-        clearInterval(intervalId);
-      }
-    };
+    return () => unsubscribe();
   }, [createSession]);
 
   return (
-    <AuthContext.Provider value={{ user, loading, signOut, refreshSession }}>
+    <AuthContext.Provider value={{ user, loading, signOut, createSession }}>
       {children}
     </AuthContext.Provider>
   );

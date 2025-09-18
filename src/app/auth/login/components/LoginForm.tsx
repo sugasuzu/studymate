@@ -1,8 +1,7 @@
-// app/auth/login/components/LoginForm.tsx
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useState, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
   signInWithEmailAndPassword,
@@ -10,33 +9,16 @@ import {
   GoogleAuthProvider,
 } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
-import { useAuth } from '@/hooks/useAuth';
 import { IoEye, IoEyeOff } from 'react-icons/io5';
 
 function LoginFormContent() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  // TODO: Remember me functionality - 一時的に無効化
-  // const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const router = useRouter();
   const searchParams = useSearchParams();
   const redirectUrl = searchParams.get('redirect') || '/my';
-  const { user, loading } = useAuth();
-
-  // 認証済みの場合は自動的にリダイレクト
-  useEffect(() => {
-    if (!loading && user) {
-      // ユーザーが既に認証されている場合
-      const timer = setTimeout(() => {
-        router.push(redirectUrl);
-      }, 100); // 少し遅延を入れて確実にリダイレクト
-
-      return () => clearTimeout(timer);
-    }
-  }, [user, loading, router, redirectUrl]);
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,26 +31,23 @@ function LoginFormContent() {
         email,
         password
       );
+      const idToken = await userCredential.user.getIdToken();
 
-      // ログイン成功後、useEffectでリダイレクトされる
-      console.log('Email login successful:', userCredential.user.uid);
-    } catch (error: unknown) {
-      console.error('Login error:', error);
+      // セッション作成
+      const response = await fetch('/api/auth/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken }),
+      });
 
-      const errorMessages: Record<string, string> = {
-        'auth/invalid-email': 'メールアドレスが正しくありません',
-        'auth/user-not-found': 'このメールアドレスのユーザーが見つかりません',
-        'auth/wrong-password': 'パスワードが正しくありません',
-        'auth/too-many-requests':
-          'ログイン試行回数が多すぎます。しばらくお待ちください',
-        'auth/user-disabled': 'このアカウントは無効化されています',
-      };
-
-      const errorCode =
-        error && typeof error === 'object' && 'code' in error
-          ? (error as { code: string }).code
-          : '';
-      setError(errorMessages[errorCode] || 'ログインに失敗しました');
+      if (response.ok) {
+        // 成功したら完全にページをリロード
+        window.location.replace(redirectUrl);
+      } else {
+        throw new Error('セッション作成に失敗しました');
+      }
+    } catch {
+      // エラー処理
       setIsLoading(false);
     }
   };
@@ -81,29 +60,39 @@ function LoginFormContent() {
       const provider = new GoogleAuthProvider();
       const result = await signInWithPopup(auth, provider);
 
-      // 初回ログインかチェック
+      // IDトークンを取得
+      const idToken = await result.user.getIdToken();
+
+      // セッション作成
+      const response = await fetch('/api/auth/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken }),
+      });
+
+      if (!response.ok) {
+        throw new Error('セッション作成に失敗しました');
+      }
+
+      // 初回ログインチェック
       const isNewUser =
         result.user.metadata.creationTime ===
         result.user.metadata.lastSignInTime;
 
-      console.log('Google login successful:', result.user.uid);
-
+      // ページをリロードして middleware に処理させる
       if (isNewUser) {
-        router.push('/auth/complete-profile');
+        window.location.href = '/auth/complete-profile';
+      } else {
+        window.location.href = redirectUrl;
       }
-      // 既存ユーザーの場合は、useEffectでリダイレクトされる
     } catch (error: unknown) {
       console.error('Google login error:', error);
 
-      // ポップアップがキャンセルされた場合
       if (error && typeof error === 'object' && 'code' in error) {
         const errorCode = (error as { code: string }).code;
         if (errorCode === 'auth/popup-closed-by-user') {
           setError('ログインがキャンセルされました');
-        } else if (errorCode === 'auth/cancelled-popup-request') {
-          // 別のポップアップが開いている場合
-          return;
-        } else {
+        } else if (errorCode !== 'auth/cancelled-popup-request') {
           setError('Googleアカウントでのログインに失敗しました');
         }
       } else {
@@ -112,16 +101,6 @@ function LoginFormContent() {
       setIsLoading(false);
     }
   };
-
-  // 既に認証済みでローディング中の場合
-  if (!loading && user) {
-    return (
-      <div className="text-center py-8">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-        <p className="text-gray-600 dark:text-gray-400">リダイレクト中...</p>
-      </div>
-    );
-  }
 
   return (
     <>
