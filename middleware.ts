@@ -1,7 +1,7 @@
 // middleware.ts
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { verifySessionCookieEdge } from '@/lib/auth-edge';
+import { verifySessionCookieEdge } from './src/lib/auth-edge';
 
 // TODO: Future use - Firestoreから直接ユーザー情報を取得する関数（Edge Runtime対応）
 // 現在は使用されていないが、将来のプロフィールチェック機能で使用予定
