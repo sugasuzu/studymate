@@ -51,9 +51,15 @@ export function VerifyEmailStatus() {
 
         // 認証成功後のリダイレクト
         setTimeout(() => {
-          // continueUrlがあればそこへ、なければプロフィール設定へ
-          const redirectUrl = continueUrl || '/auth/complete-profile';
-          router.push(redirectUrl);
+          // continueUrlがあればそこへ、なければマイページへ
+          const redirectUrl = continueUrl || '/my';
+          console.log('Redirecting to:', redirectUrl);
+          try {
+            router.push(redirectUrl);
+          } catch (error) {
+            console.error('Router push failed, using window.location:', error);
+            window.location.href = redirectUrl;
+          }
         }, 2000);
       }
     } catch (error: any) {
@@ -92,7 +98,13 @@ export function VerifyEmailStatus() {
               setIsVerified(true);
               clearInterval(interval);
               setTimeout(() => {
-                router.push('/auth/complete-profile');
+                console.log('Auto redirect from interval check to /my');
+                try {
+                  router.push('/my');
+                } catch (error) {
+                  console.error('Router push failed, using window.location:', error);
+                  window.location.href = '/my';
+                }
               }, 2000);
             }
           }, 3000);
@@ -227,9 +239,22 @@ export function VerifyEmailStatus() {
         <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
           メール認証が完了しました！
         </h3>
-        <p className="text-gray-600 dark:text-gray-300">
+        <p className="text-gray-600 dark:text-gray-300 mb-4">
           まもなくマイページに移動します...
         </p>
+        <button
+          onClick={() => {
+            const redirectUrl = continueUrl || '/my';
+            try {
+              router.push(redirectUrl);
+            } catch (error) {
+              window.location.href = redirectUrl;
+            }
+          }}
+          className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+        >
+          マイページに移動
+        </button>
       </div>
     );
   }
