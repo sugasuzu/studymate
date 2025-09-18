@@ -39,7 +39,7 @@ export function UniversitySearch({
     if (initialUniversities && initialUniversities.length > 0) {
       setUniversities(initialUniversities);
     }
-  }, []); // 空の依存配列で初回のみ実行
+  }, [initialUniversities]); // initialUniversitiesが変更されたときに実行
 
   // Server Actionを使用した検索
   const performSearch = useCallback(async (keyword: string) => {
@@ -146,6 +146,7 @@ export function UniversitySearch({
           className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white pr-10"
           placeholder="大学名を入力して検索"
           required
+          role="combobox"
           aria-autocomplete="list"
           aria-controls="university-dropdown"
           aria-expanded={showDropdown}

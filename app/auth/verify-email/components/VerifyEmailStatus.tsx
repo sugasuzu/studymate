@@ -1,7 +1,7 @@
 // app/auth/verify-email/components/VerifyEmailStatus.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   onAuthStateChanged,
@@ -25,61 +25,66 @@ export function VerifyEmailStatus() {
   const oobCode = searchParams.get('oobCode');
   const continueUrl = searchParams.get('continueUrl');
 
-  useEffect(() => {
-    // メール認証リンクから来た場合の処理
-    if (mode === 'verifyEmail' && oobCode) {
-      handleEmailVerification(oobCode);
-    } else {
-      // 通常の認証状態チェック
-      checkAuthStatus();
-    }
-  }, [mode, oobCode]);
+  const handleEmailVerification = useCallback(
+    async (code: string) => {
+      setIsChecking(true);
+      setError(null);
 
-  const handleEmailVerification = async (code: string) => {
-    setIsChecking(true);
-    setError(null);
+      try {
+        // アクションコードを適用してメールを認証
+        await applyActionCode(auth, code);
 
-    try {
-      // アクションコードを適用してメールを認証
-      await applyActionCode(auth, code);
+        // ユーザー情報を再読み込み
+        if (auth.currentUser) {
+          await auth.currentUser.reload();
+          setIsVerified(true);
+          setEmail(auth.currentUser.email);
 
-      // ユーザー情報を再読み込み
-      if (auth.currentUser) {
-        await auth.currentUser.reload();
-        setIsVerified(true);
-        setEmail(auth.currentUser.email);
+          // 認証成功後のリダイレクト
+          setTimeout(() => {
+            // continueUrlがあればそこへ、なければマイページへ
+            const redirectUrl = continueUrl || '/my';
+            console.log('Redirecting to:', redirectUrl);
+            try {
+              router.push(redirectUrl);
+            } catch (_error) {
+              console.error(
+                'Router push failed, using window.location:',
+                _error
+              );
+              window.location.href = redirectUrl;
+            }
+          }, 2000);
+        }
+      } catch (error: unknown) {
+        console.error('Email verification error:', error);
 
-        // 認証成功後のリダイレクト
-        setTimeout(() => {
-          // continueUrlがあればそこへ、なければマイページへ
-          const redirectUrl = continueUrl || '/my';
-          console.log('Redirecting to:', redirectUrl);
-          try {
-            router.push(redirectUrl);
-          } catch (error) {
-            console.error('Router push failed, using window.location:', error);
-            window.location.href = redirectUrl;
-          }
-        }, 2000);
+        // エラーメッセージの設定
+        const errorMessages: Record<string, string> = {
+          'auth/invalid-action-code': '認証リンクが無効または期限切れです',
+          'auth/user-disabled': 'このアカウントは無効化されています',
+          'auth/user-not-found': 'ユーザーが見つかりません',
+        };
+
+        const errorCode =
+          error &&
+          typeof error === 'object' &&
+          error !== null &&
+          'code' in error &&
+          typeof (error as Record<string, unknown>).code === 'string'
+            ? (error as { code: string }).code
+            : '';
+
+        setError(errorMessages[errorCode] || 'メール認証に失敗しました');
+        setIsVerified(false);
+      } finally {
+        setIsChecking(false);
       }
-    } catch (error: any) {
-      console.error('Email verification error:', error);
+    },
+    [continueUrl, router]
+  );
 
-      // エラーメッセージの設定
-      const errorMessages: Record<string, string> = {
-        'auth/invalid-action-code': '認証リンクが無効または期限切れです',
-        'auth/user-disabled': 'このアカウントは無効化されています',
-        'auth/user-not-found': 'ユーザーが見つかりません',
-      };
-
-      setError(errorMessages[error.code] || 'メール認証に失敗しました');
-      setIsVerified(false);
-    } finally {
-      setIsChecking(false);
-    }
-  };
-
-  const checkAuthStatus = () => {
+  const checkAuthStatus = useCallback(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         setEmail(user.email);
@@ -101,8 +106,11 @@ export function VerifyEmailStatus() {
                 console.log('Auto redirect from interval check to /my');
                 try {
                   router.push('/my');
-                } catch (error) {
-                  console.error('Router push failed, using window.location:', error);
+                } catch (_error) {
+                  console.error(
+                    'Router push failed, using window.location:',
+                    _error
+                  );
                   window.location.href = '/my';
                 }
               }, 2000);
@@ -120,7 +128,17 @@ export function VerifyEmailStatus() {
     });
 
     return () => unsubscribe();
-  };
+  }, [mode, router]);
+
+  useEffect(() => {
+    // メール認証リンクから来た場合の処理
+    if (mode === 'verifyEmail' && oobCode) {
+      handleEmailVerification(oobCode);
+    } else {
+      // 通常の認証状態チェック
+      checkAuthStatus();
+    }
+  }, [mode, oobCode, handleEmailVerification, checkAuthStatus]);
 
   const handleResendEmail = async () => {
     if (!auth.currentUser) {
@@ -140,7 +158,7 @@ export function VerifyEmailStatus() {
 
       await sendEmailVerification(auth.currentUser, actionCodeSettings);
       setResendMessage('認証メールを再送信しました');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Resend email error:', error);
 
       const errorMessages: Record<string, string> = {
@@ -149,8 +167,17 @@ export function VerifyEmailStatus() {
         'auth/user-not-found': 'ユーザーが見つかりません',
       };
 
+      const errorCode =
+        error &&
+        typeof error === 'object' &&
+        error !== null &&
+        'code' in error &&
+        typeof (error as Record<string, unknown>).code === 'string'
+          ? (error as { code: string }).code
+          : '';
+
       setResendMessage(
-        errorMessages[error.code] || 'メールの再送信に失敗しました'
+        errorMessages[errorCode] || 'メールの再送信に失敗しました'
       );
     } finally {
       setIsResending(false);
@@ -247,7 +274,7 @@ export function VerifyEmailStatus() {
             const redirectUrl = continueUrl || '/my';
             try {
               router.push(redirectUrl);
-            } catch (error) {
+            } catch {
               window.location.href = redirectUrl;
             }
           }}

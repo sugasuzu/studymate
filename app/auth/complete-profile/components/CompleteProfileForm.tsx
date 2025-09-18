@@ -3,11 +3,14 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { updateProfile } from 'firebase/auth';
-import { auth, db, storage } from '@/lib/firebase';
-import { ref, uploadString, getDownloadURL } from 'firebase/storage';
-import Resizer from 'react-image-file-resizer';
+import { auth, db } from '@/lib/firebase';
+// TODO: Firebase Storage機能 - コスト削減のため一時的にコメントアウト
+// import { storage } from '@/lib/firebase';
+// import { ref, uploadString, getDownloadURL } from 'firebase/storage';
+// import Resizer from 'react-image-file-resizer';
 import { UniversitySearch } from '@/app/questionnaire/components/Universitysearch';
 
 interface University {
@@ -25,8 +28,9 @@ export function CompleteProfileForm() {
   const [graduationYear, setGraduationYear] = useState('');
   const [isStudent, setIsStudent] = useState(true);
   const [profileImage, setProfileImage] = useState<string | null>(null);
-  const [profileImageFile, setProfileImageFile] = useState<File | null>(null);
-  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  // TODO: Firebase Storage機能 - 一時的に無効化されたstate
+  // const [profileImageFile, setProfileImageFile] = useState<File | null>(null);
+  // const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -38,7 +42,7 @@ export function CompleteProfileForm() {
 
   useEffect(() => {
     checkExistingProfile();
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const checkExistingProfile = async () => {
     setIsChecking(true);
@@ -104,71 +108,79 @@ export function CompleteProfileForm() {
     }
   };
 
-  // 画像をリサイズする関数
-  const resizeImage = (file: File): Promise<string> => {
-    return new Promise((resolve) => {
-      Resizer.imageFileResizer(
-        file,
-        200, // 幅
-        200, // 高さ
-        'JPEG', // フォーマット
-        80, // 品質
-        0, // 回転
-        (uri) => {
-          resolve(uri as string);
-        },
-        'base64' // 出力タイプ
-      );
-    });
+  // TODO: Firebase Storage機能 - 画像リサイズ機能（コスト削減のため一時的にコメントアウト）
+  // const resizeImage = (file: File): Promise<string> => {
+  //   return new Promise((resolve) => {
+  //     Resizer.imageFileResizer(
+  //       file,
+  //       200, // 幅
+  //       200, // 高さ
+  //       'JPEG', // フォーマット
+  //       80, // 品質
+  //       0, // 回転
+  //       (uri) => {
+  //         resolve(uri as string);
+  //       },
+  //       'base64' // 出力タイプ
+  //     );
+  //   });
+  // };
+
+  // TODO: Firebase Storage機能 - 画像選択・処理機能（コスト削減のため一時的にコメントアウト）
+  const handleImageSelect = async () => {
+    // TODO: Firebase Storage機能を有効化する際は以下のコメントアウトを解除
+    setError(
+      '画像アップロード機能は現在無効です。Firebase Storageの設定が必要です。'
+    );
+    return;
+
+    // const file = event.target.files?.[0];
+    // if (!file) return;
+
+    // // ファイルタイプをチェック
+    // if (!file.type.startsWith('image/')) {
+    //   setError('画像ファイルを選択してください');
+    //   return;
+    // }
+
+    // // ファイルサイズをチェック（5MB以下）
+    // if (file.size > 5 * 1024 * 1024) {
+    //   setError('ファイルサイズは5MB以下にしてください');
+    //   return;
+    // }
+
+    // try {
+    //   setIsUploadingImage(true);
+    //   setError(null);
+
+    //   // 画像をリサイズ
+    //   const resizedImage = await resizeImage(file);
+    //   setProfileImage(resizedImage);
+    //   setProfileImageFile(file);
+    // } catch (error) {
+    //   console.error('Image resize error:', error);
+    //   setError('画像の処理に失敗しました');
+    // } finally {
+    //   setIsUploadingImage(false);
+    // }
   };
 
-  // 画像ファイルを選択する関数
-  const handleImageSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+  // TODO: Firebase Storage機能 - 画像アップロード機能（コスト削減のため一時的にコメントアウト）
+  // const uploadProfileImage = async (_userId: string): Promise<string | null> => {
+  //   // TODO: Firebase Storage機能を有効化する際は以下のコメントアウトを解除
+  //   // if (!profileImage) return null;
 
-    // ファイルタイプをチェック
-    if (!file.type.startsWith('image/')) {
-      setError('画像ファイルを選択してください');
-      return;
-    }
-
-    // ファイルサイズをチェック（5MB以下）
-    if (file.size > 5 * 1024 * 1024) {
-      setError('ファイルサイズは5MB以下にしてください');
-      return;
-    }
-
-    try {
-      setIsUploadingImage(true);
-      setError(null);
-
-      // 画像をリサイズ
-      const resizedImage = await resizeImage(file);
-      setProfileImage(resizedImage);
-      setProfileImageFile(file);
-    } catch (error) {
-      console.error('Image resize error:', error);
-      setError('画像の処理に失敗しました');
-    } finally {
-      setIsUploadingImage(false);
-    }
-  };
-
-  // 画像をFirebase Storageにアップロードする関数
-  const uploadProfileImage = async (userId: string): Promise<string | null> => {
-    if (!profileImage) return null;
-
-    try {
-      const imageRef = ref(storage, `profile-images/${userId}/${Date.now()}.jpg`);
-      await uploadString(imageRef, profileImage, 'data_url');
-      const downloadURL = await getDownloadURL(imageRef);
-      return downloadURL;
-    } catch (error) {
-      console.error('Image upload error:', error);
-      throw new Error('画像のアップロードに失敗しました');
-    }
-  };
+  //   // try {
+  //   //   const imageRef = ref(storage, `profile-images/${userId}/${Date.now()}.jpg`);
+  //   //   await uploadString(imageRef, profileImage, 'data_url');
+  //   //   const downloadURL = await getDownloadURL(imageRef);
+  //   //   return downloadURL;
+  //   // } catch (error) {
+  //   //   console.error('Image upload error:', error);
+  //   //   throw new Error('画像のアップロードに失敗しました');
+  //   // }
+  //   return null; // 現在は画像アップロードを無効化
+  // };
 
   const validateForm = (): boolean => {
     const errors: Record<string, string> = {};
@@ -229,13 +241,13 @@ export function CompleteProfileForm() {
         hasProfileImage: !!profileImage,
       });
 
-      // プロフィール画像をアップロード（ある場合）
-      let photoURL = user.photoURL;
-      if (profileImage && profileImageFile) {
-        console.log('Uploading profile image...');
-        photoURL = await uploadProfileImage(user.uid);
-        console.log('Profile image uploaded:', photoURL);
-      }
+      // TODO: Firebase Storage機能 - プロフィール画像アップロード（コスト削減のため一時的にコメントアウト）
+      const photoURL = user.photoURL;
+      // if (profileImage && profileImageFile) {
+      //   console.log('Uploading profile image...');
+      //   photoURL = await uploadProfileImage(user.uid);
+      //   console.log('Profile image uploaded:', photoURL);
+      // }
 
       // Firebase Authのプロフィール更新
       await updateProfile(user, {
@@ -273,9 +285,13 @@ export function CompleteProfileForm() {
       // 成功したらリダイレクト
       console.log('Redirecting to /my');
       router.push('/my');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Profile completion error:', error);
-      setError(error.message || 'プロフィールの設定に失敗しました');
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : 'プロフィールの設定に失敗しました';
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -306,9 +322,11 @@ export function CompleteProfileForm() {
       );
 
       router.push('/my');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Skip error:', error);
-      setError(error.message || 'スキップ処理に失敗しました');
+      const errorMessage =
+        error instanceof Error ? error.message : 'スキップ処理に失敗しました';
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -393,9 +411,11 @@ export function CompleteProfileForm() {
           <div className="relative">
             <div className="w-20 h-20 rounded-full overflow-hidden bg-gray-100 dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-600">
               {profileImage ? (
-                <img
+                <Image
                   src={profileImage}
                   alt="プロフィール画像"
+                  width={80}
+                  height={80}
                   className="w-full h-full object-cover"
                 />
               ) : (
@@ -416,11 +436,13 @@ export function CompleteProfileForm() {
                 </div>
               )}
             </div>
-            {isUploadingImage && (
+            {/* TODO: Firebase Storage機能 - isUploadingImage無効化
+            {false && (
               <div className="absolute inset-0 bg-black bg-opacity-50 rounded-full flex items-center justify-center">
                 <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
               </div>
             )}
+            */}
           </div>
 
           {/* アップロードボタン */}
@@ -431,14 +453,12 @@ export function CompleteProfileForm() {
               accept="image/*"
               onChange={handleImageSelect}
               className="hidden"
-              disabled={isLoading || isUploadingImage}
+              disabled={isLoading}
             />
             <label
               htmlFor="profileImage"
               className={`inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition ${
-                isLoading || isUploadingImage
-                  ? 'opacity-50 cursor-not-allowed'
-                  : ''
+                isLoading ? 'opacity-50 cursor-not-allowed' : ''
               }`}
             >
               <svg
@@ -458,6 +478,9 @@ export function CompleteProfileForm() {
             </label>
             <p className="mt-1 text-xs text-gray-500">
               JPEG、PNG形式 / 5MB以下 / 200×200pxに自動リサイズされます
+            </p>
+            <p className="mt-1 text-xs text-red-500">
+              ※ 現在画像アップロード機能は無効です（Firebase Storage未設定）
             </p>
           </div>
         </div>

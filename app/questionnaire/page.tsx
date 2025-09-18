@@ -69,7 +69,9 @@ export default async function QuestionnairePage() {
                       clipRule="evenodd"
                     />
                   </svg>
-                  <span>大学のメールアドレスの入力をお願いします（信頼性確保のため）</span>
+                  <span>
+                    大学のメールアドレスの入力をお願いします（信頼性確保のため）
+                  </span>
                 </li>
                 <li className="flex items-center gap-2">
                   <svg

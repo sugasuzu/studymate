@@ -3,35 +3,36 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { verifySessionCookieEdge } from '@/lib/auth-edge';
 
-// Firestoreから直接ユーザー情報を取得する関数（Edge Runtime対応）
-async function getUserProfileStatus(uid: string): Promise<{
-  profileCompleted: boolean;
-}> {
-  try {
-    // Firebase REST APIを使用（Edge Runtimeで動作）
-    const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
-    const response = await fetch(
-      `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}`,
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.FIREBASE_SERVER_KEY}`, // サービスアカウントキーが必要
-        },
-      }
-    );
+// TODO: Future use - Firestoreから直接ユーザー情報を取得する関数（Edge Runtime対応）
+// 現在は使用されていないが、将来のプロフィールチェック機能で使用予定
+// async function getUserProfileStatus(uid: string): Promise<{
+//   profileCompleted: boolean;
+// }> {
+//   try {
+//     // Firebase REST APIを使用（Edge Runtimeで動作）
+//     const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+//     const response = await fetch(
+//       `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}`,
+//       {
+//         headers: {
+//           Authorization: `Bearer ${process.env.FIREBASE_SERVER_KEY}`, // サービスアカウントキーが必要
+//         },
+//       }
+//     );
 
-    if (!response.ok) {
-      return { profileCompleted: false };
-    }
+//     if (!response.ok) {
+//       return { profileCompleted: false };
+//     }
 
-    const data = await response.json();
-    return {
-      profileCompleted: data.fields?.profileCompleted?.booleanValue || false,
-    };
-  } catch (error) {
-    console.error('Error fetching user profile:', error);
-    return { profileCompleted: false };
-  }
-}
+//     const data = await response.json();
+//     return {
+//       profileCompleted: data.fields?.profileCompleted?.booleanValue || false,
+//     };
+//   } catch (error) {
+//     console.error('Error fetching user profile:', error);
+//     return { profileCompleted: false };
+//   }
+// }
 
 export async function middleware(request: NextRequest) {
   const session = request.cookies.get('session');
@@ -93,12 +94,13 @@ export async function middleware(request: NextRequest) {
       'x-user-email-verified',
       String(decodedToken.email_verified || false)
     );
-    requestHeaders.set('x-user-name', encodeURIComponent(decodedToken.name || ''));
+    requestHeaders.set(
+      'x-user-name',
+      encodeURIComponent(decodedToken.name || '')
+    );
 
     // プロフィール完成チェックが必要なパス
-    const requiresCompleteProfile = [
-      '/my',
-    ];
+    const requiresCompleteProfile = ['/my'];
 
     // プロフィール設定ページ自体へのアクセスは許可
     if (pathname === '/auth/complete-profile') {

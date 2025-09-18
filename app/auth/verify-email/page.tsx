@@ -1,5 +1,6 @@
 // app/auth/verify-email/page.tsx
 import { Metadata } from 'next';
+import { Suspense } from 'react';
 import { VerifyEmailStatus } from './components/VerifyEmailStatus';
 
 export const metadata: Metadata = {
@@ -34,7 +35,15 @@ export default function VerifyEmailPage() {
               メールを確認してください
             </h2>
 
-            <VerifyEmailStatus />
+            <Suspense
+              fallback={
+                <div className="flex justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                </div>
+              }
+            >
+              <VerifyEmailStatus />
+            </Suspense>
           </div>
         </div>
       </div>

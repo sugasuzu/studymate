@@ -242,7 +242,7 @@ export function SignupForm() {
           </label>
           <div className="relative">
             <input
-              type={showPassword ? "text" : "password"}
+              type={showPassword ? 'text' : 'password'}
               id="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -262,9 +262,7 @@ export function SignupForm() {
               )}
             </button>
           </div>
-          <p className="mt-1 text-xs text-gray-500">
-            6文字以上
-          </p>
+          <p className="mt-1 text-xs text-gray-500">6文字以上</p>
           {fieldErrors.password && (
             <p className="mt-1 text-sm text-red-600">{fieldErrors.password}</p>
           )}
@@ -279,7 +277,7 @@ export function SignupForm() {
           </label>
           <div className="relative">
             <input
-              type={showConfirmPassword ? "text" : "password"}
+              type={showConfirmPassword ? 'text' : 'password'}
               id="confirmPassword"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}

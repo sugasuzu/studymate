@@ -17,7 +17,8 @@ function LoginFormContent() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
+  // TODO: Remember me functionality - 一時的に無効化
+  // const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
@@ -200,7 +201,7 @@ function LoginFormContent() {
           </label>
           <div className="relative">
             <input
-              type={showPassword ? "text" : "password"}
+              type={showPassword ? 'text' : 'password'}
               id="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
