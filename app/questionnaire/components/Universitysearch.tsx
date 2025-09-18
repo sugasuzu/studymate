@@ -30,14 +30,22 @@ export function UniversitySearch({
     useState<University | null>(null);
   const [error, setError] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const searchCache = useRef<Map<string, University[]>>(new Map());
 
-  const debouncedSearchTerm = useDebounce(searchTerm, 500);
+  const debouncedSearchTerm = useDebounce(searchTerm, 800);
 
   // Server Actionを使用した検索
   const performSearch = useCallback(
     async (keyword: string) => {
       if (keyword.length < 2) {
         setUniversities(initialUniversities);
+        return;
+      }
+
+      // キャッシュチェック
+      const cachedResult = searchCache.current.get(keyword);
+      if (cachedResult) {
+        setUniversities(cachedResult);
         return;
       }
 
@@ -48,6 +56,8 @@ export function UniversitySearch({
         const result = await searchUniversities(keyword);
 
         if (result.success) {
+          // キャッシュに保存
+          searchCache.current.set(keyword, result.data.universities);
           setUniversities(result.data.universities);
         } else {
           setError(result.error);
@@ -75,7 +85,6 @@ export function UniversitySearch({
   }, [
     debouncedSearchTerm,
     performSearch,
-    initialUniversities,
     selectedUniversity,
   ]);
 

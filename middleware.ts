@@ -112,7 +112,8 @@ export async function middleware(request: NextRequest) {
     requestHeaders.set('x-user-uid', user.uid);
     requestHeaders.set('x-user-email', user.email || '');
     requestHeaders.set('x-user-email-verified', String(isEmailVerified));
-    requestHeaders.set('x-user-name', user.name || '');
+    // 日本語を含む可能性があるためBase64エンコード
+    requestHeaders.set('x-user-name', user.name ? Buffer.from(user.name, 'utf-8').toString('base64') : '');
   }
 
   return NextResponse.next({
