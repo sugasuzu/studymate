@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
   signInWithEmailAndPassword,
@@ -9,6 +9,8 @@ import {
   GoogleAuthProvider,
 } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import { IoEye, IoEyeOff } from 'react-icons/io5';
 
 function LoginFormContent() {
@@ -17,6 +19,7 @@ function LoginFormContent() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
   const searchParams = useSearchParams();
   const redirectUrl = searchParams.get('redirect') || '/my';
 
@@ -31,23 +34,39 @@ function LoginFormContent() {
         email,
         password
       );
+
+      // IDトークンを取得してセッション作成
       const idToken = await userCredential.user.getIdToken();
 
-      // セッション作成
       const response = await fetch('/api/auth/session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ idToken }),
       });
 
-      if (response.ok) {
-        // 成功したら完全にページをリロード
-        window.location.replace(redirectUrl);
-      } else {
+      if (!response.ok) {
         throw new Error('セッション作成に失敗しました');
       }
-    } catch {
-      // エラー処理
+
+      // セッション作成後、/myへリダイレクト
+      window.location.replace(redirectUrl);
+    } catch (error: unknown) {
+      console.error('Login error:', error);
+
+      const errorMessages: Record<string, string> = {
+        'auth/invalid-email': 'メールアドレスが正しくありません',
+        'auth/user-not-found': 'このメールアドレスのユーザーが見つかりません',
+        'auth/wrong-password': 'パスワードが正しくありません',
+        'auth/too-many-requests':
+          'ログイン試行回数が多すぎます。しばらくお待ちください',
+        'auth/user-disabled': 'このアカウントは無効化されています',
+      };
+
+      const errorCode =
+        error && typeof error === 'object' && 'code' in error
+          ? (error as { code: string }).code
+          : '';
+      setError(errorMessages[errorCode] || 'ログインに失敗しました');
       setIsLoading(false);
     }
   };
@@ -60,10 +79,25 @@ function LoginFormContent() {
       const provider = new GoogleAuthProvider();
       const result = await signInWithPopup(auth, provider);
 
-      // IDトークンを取得
-      const idToken = await result.user.getIdToken();
+      // 既存のユーザードキュメントを確認
+      const userDoc = await getDoc(doc(db, 'users', result.user.uid));
 
-      // セッション作成
+      if (!userDoc.exists()) {
+        // 新規ユーザーの場合、基本情報を保存
+        await setDoc(doc(db, 'users', result.user.uid), {
+          uid: result.user.uid,
+          email: result.user.email,
+          displayName: result.user.displayName,
+          photoURL: result.user.photoURL,
+          emailVerified: true,
+          profileCompleted: false, // 常に未完成として開始
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+      }
+
+      // IDトークンを取得してセッション作成
+      const idToken = await result.user.getIdToken();
       const response = await fetch('/api/auth/session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -74,17 +108,7 @@ function LoginFormContent() {
         throw new Error('セッション作成に失敗しました');
       }
 
-      // 初回ログインチェック
-      const isNewUser =
-        result.user.metadata.creationTime ===
-        result.user.metadata.lastSignInTime;
-
-      // ページをリロードして middleware に処理させる
-      if (isNewUser) {
-        window.location.href = '/auth/complete-profile';
-      } else {
-        window.location.href = redirectUrl;
-      }
+      window.location.replace(redirectUrl);
     } catch (error: unknown) {
       console.error('Google login error:', error);
 

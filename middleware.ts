@@ -4,9 +4,9 @@ import type { NextRequest } from 'next/server';
 import { verifySessionCookieEdge } from './src/lib/auth-edge';
 
 // 認証が必要なパス
-const PROTECTED_PATHS = ['/my', '/questionnaire', '/auth/complete-profile'];
+const PROTECTED_PATHS = ['/my', '/questionnaire'];
 
-// 認証済みユーザーがアクセスできないパス（認証ページ）
+// 認証済みユーザーがアクセスできないパス
 const AUTH_PAGES = ['/auth/login', '/auth/signup', '/auth/reset-password'];
 
 export async function middleware(request: NextRequest) {
@@ -35,7 +35,6 @@ export async function middleware(request: NextRequest) {
       url.searchParams.set('redirect', pathname);
       return NextResponse.redirect(url);
     }
-    // 認証ページや公開ページはそのまま通す
     return NextResponse.next();
   }
 
@@ -48,7 +47,6 @@ export async function middleware(request: NextRequest) {
       const response = NextResponse.next();
       response.cookies.delete('session');
 
-      // 保護されたパスの場合はログインへリダイレクト
       if (isProtectedPath) {
         const url = new URL('/auth/login', request.url);
         url.searchParams.set('redirect', pathname);
@@ -58,39 +56,20 @@ export async function middleware(request: NextRequest) {
       return response;
     }
 
-    // ========== 認証済みユーザーの処理 ==========
-
-    // 認証ページへのアクセスをブロック
+    // 認証済みユーザーが認証ページにアクセスした場合
     if (isAuthPage) {
-      console.log(
-        '[Middleware] Authenticated user trying to access auth page, redirecting to /my'
-      );
       return NextResponse.redirect(new URL('/my', request.url));
     }
 
-    // メール未認証の場合の処理
-    if (isProtectedPath && !decodedToken.email_verified) {
-      // verify-emailページ自体へのアクセスは許可
-      if (pathname === '/auth/verify-email') {
-        return NextResponse.next();
-      }
-      // その他の保護されたページはverify-emailへリダイレクト
-      console.log(
-        '[Middleware] Email not verified, redirecting to verify-email'
-      );
-      return NextResponse.redirect(new URL('/auth/verify-email', request.url));
-    }
+    // メール未認証でも/myへのアクセスは許可（警告を表示）
+    // プロフィール未完成でも/myへのアクセスは許可（警告を表示）
 
-    // すべての条件をクリアした場合は通す
     return NextResponse.next();
   } catch (error) {
-    console.error('[Middleware] Session verification error:', error);
-
-    // エラーの場合はセッションをクリアして処理を続行
+    console.error('[Middleware] Error:', error);
     const response = NextResponse.next();
     response.cookies.delete('session');
 
-    // 保護されたパスの場合はログインへリダイレクト
     if (isProtectedPath) {
       const url = new URL('/auth/login', request.url);
       url.searchParams.set('redirect', pathname);

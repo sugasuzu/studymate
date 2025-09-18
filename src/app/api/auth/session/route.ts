@@ -35,10 +35,21 @@ export async function POST(request: NextRequest) {
     }
 
     // レスポンスを作成
-    const response = NextResponse.json({ success: true }, { status: 200 });
+    const response = NextResponse.json(
+      { success: true, message: 'Session created' },
+      { status: 200 }
+    );
 
     // IDトークンをセッションクッキーとして設定
-    response.cookies.set(SESSION_COOKIE_NAME, idToken, SESSION_COOKIE_OPTIONS);
+    response.cookies.set('session', idToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 60 * 60 * 24 * 5, // 5日間
+    });
+
+    console.log('[Session API] Session cookie set successfully');
 
     return response;
   } catch (error) {

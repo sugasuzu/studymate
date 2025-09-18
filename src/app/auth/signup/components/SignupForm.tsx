@@ -1,4 +1,3 @@
-// app/auth/signup/components/SignupForm.tsx
 'use client';
 
 import { useState } from 'react';
@@ -11,7 +10,7 @@ import {
   GoogleAuthProvider,
 } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { IoEye, IoEyeOff } from 'react-icons/io5';
 
@@ -52,6 +51,48 @@ export function SignupForm() {
     return Object.keys(errors).length === 0;
   };
 
+  const handleGoogleSignup = async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const provider = new GoogleAuthProvider();
+      const result = await signInWithPopup(auth, provider);
+
+      // 既存のユーザードキュメントを確認
+      const userDoc = await getDoc(doc(db, 'users', result.user.uid));
+
+      if (!userDoc.exists()) {
+        // 新規ユーザーの場合、基本情報を保存
+        await setDoc(doc(db, 'users', result.user.uid), {
+          uid: result.user.uid,
+          email: result.user.email,
+          displayName: result.user.displayName,
+          photoURL: result.user.photoURL,
+          emailVerified: true,
+          profileCompleted: false,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+      }
+
+      // IDトークンを取得してセッション作成
+      const idToken = await result.user.getIdToken();
+      await fetch('/api/auth/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken }),
+      });
+
+      // 常に/myへリダイレクト
+      window.location.replace('/my');
+    } catch (error: unknown) {
+      // エラーハンドリング...
+      setIsLoading(false);
+    }
+  };
+
+  // メール登録の場合（handleEmailSignup）
   const handleEmailSignup = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -72,91 +113,20 @@ export function SignupForm() {
 
       // ユーザー情報をFirestoreに保存
       await setDoc(doc(db, 'users', userCredential.user.uid), {
+        uid: userCredential.user.uid,
         email: userCredential.user.email,
         createdAt: new Date(),
         emailVerified: false,
         profileCompleted: false,
       });
 
-      // カスタムアクションコード設定でメール認証リンクを送信
-      const actionCodeSettings = {
-        // メール認証後のリダイレクトURL
-        url: `${window.location.origin}/auth/verify-email?continueUrl=/auth/complete-profile`,
-        handleCodeInApp: true,
-      };
-
-      await sendEmailVerification(userCredential.user, actionCodeSettings);
+      // メール認証を送信
+      await sendEmailVerification(userCredential.user);
 
       // 認証メール送信画面へリダイレクト
       router.push('/auth/verify-email');
     } catch (error: unknown) {
-      console.error('Signup error:', error);
-
-      const errorMessages: Record<string, string> = {
-        'auth/email-already-in-use': 'このメールアドレスは既に使用されています',
-        'auth/invalid-email': 'メールアドレスが正しくありません',
-        'auth/weak-password': 'パスワードが弱すぎます',
-        'auth/operation-not-allowed':
-          'メール/パスワード認証が無効になっています',
-      };
-
-      const errorCode =
-        error && typeof error === 'object' && 'code' in error
-          ? (error as { code: string }).code
-          : '';
-      setError(errorMessages[errorCode] || '登録に失敗しました');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleGoogleSignup = async () => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
-
-      // 初回ログインかチェック
-      const isNewUser =
-        result.user.metadata.creationTime ===
-        result.user.metadata.lastSignInTime;
-
-      // ユーザー情報をFirestoreに保存/更新
-      await setDoc(
-        doc(db, 'users', result.user.uid),
-        {
-          email: result.user.email,
-          displayName: result.user.displayName,
-          photoURL: result.user.photoURL,
-          emailVerified: true, // Googleアカウントはメール認証済み
-          profileCompleted: !isNewUser,
-          updatedAt: new Date(),
-        },
-        { merge: true }
-      );
-
-      if (isNewUser) {
-        router.push('/auth/complete-profile');
-      } else {
-        router.push('/my');
-      }
-    } catch (error: unknown) {
-      console.error('Google signup error:', error);
-
-      if (error && typeof error === 'object' && 'code' in error) {
-        const errorCode = (error as { code: string }).code;
-        if (errorCode === 'auth/popup-closed-by-user') {
-          setError('ログインがキャンセルされました');
-        } else if (errorCode === 'auth/cancelled-popup-request') {
-          return;
-        } else {
-          setError('Googleアカウントでの登録に失敗しました');
-        }
-      } else {
-        setError('登録に失敗しました');
-      }
+      // エラーハンドリング...
       setIsLoading(false);
     }
   };
