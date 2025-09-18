@@ -5,7 +5,9 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { updateProfile } from 'firebase/auth';
-import { auth, db } from '@/lib/firebase';
+import { auth, db, storage } from '@/lib/firebase';
+import { ref, uploadString, getDownloadURL } from 'firebase/storage';
+import Resizer from 'react-image-file-resizer';
 import { UniversitySearch } from '@/app/questionnaire/components/Universitysearch';
 
 interface University {
@@ -22,6 +24,9 @@ export function CompleteProfileForm() {
   const [department, setDepartment] = useState('');
   const [graduationYear, setGraduationYear] = useState('');
   const [isStudent, setIsStudent] = useState(true);
+  const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [profileImageFile, setProfileImageFile] = useState<File | null>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -67,6 +72,7 @@ export function CompleteProfileForm() {
         if (data.universityDepartment) setDepartment(data.universityDepartment);
         if (data.graduationYear) setGraduationYear(String(data.graduationYear));
         if (typeof data.isStudent === 'boolean') setIsStudent(data.isStudent);
+        if (data.photoURL) setProfileImage(data.photoURL);
 
         // Googleログインユーザーはスキップ可能
         setCanSkip(user.providerData[0]?.providerId === 'google.com');
@@ -87,11 +93,80 @@ export function CompleteProfileForm() {
       if (user.displayName && !displayName) {
         setDisplayName(user.displayName);
       }
+      if (user.photoURL && !profileImage) {
+        setProfileImage(user.photoURL);
+      }
     } catch (error) {
       console.error('Error checking profile:', error);
       setError('プロフィールの取得に失敗しました');
     } finally {
       setIsChecking(false);
+    }
+  };
+
+  // 画像をリサイズする関数
+  const resizeImage = (file: File): Promise<string> => {
+    return new Promise((resolve) => {
+      Resizer.imageFileResizer(
+        file,
+        200, // 幅
+        200, // 高さ
+        'JPEG', // フォーマット
+        80, // 品質
+        0, // 回転
+        (uri) => {
+          resolve(uri as string);
+        },
+        'base64' // 出力タイプ
+      );
+    });
+  };
+
+  // 画像ファイルを選択する関数
+  const handleImageSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // ファイルタイプをチェック
+    if (!file.type.startsWith('image/')) {
+      setError('画像ファイルを選択してください');
+      return;
+    }
+
+    // ファイルサイズをチェック（5MB以下）
+    if (file.size > 5 * 1024 * 1024) {
+      setError('ファイルサイズは5MB以下にしてください');
+      return;
+    }
+
+    try {
+      setIsUploadingImage(true);
+      setError(null);
+
+      // 画像をリサイズ
+      const resizedImage = await resizeImage(file);
+      setProfileImage(resizedImage);
+      setProfileImageFile(file);
+    } catch (error) {
+      console.error('Image resize error:', error);
+      setError('画像の処理に失敗しました');
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
+  // 画像をFirebase Storageにアップロードする関数
+  const uploadProfileImage = async (userId: string): Promise<string | null> => {
+    if (!profileImage) return null;
+
+    try {
+      const imageRef = ref(storage, `profile-images/${userId}/${Date.now()}.jpg`);
+      await uploadString(imageRef, profileImage, 'data_url');
+      const downloadURL = await getDownloadURL(imageRef);
+      return downloadURL;
+    } catch (error) {
+      console.error('Image upload error:', error);
+      throw new Error('画像のアップロードに失敗しました');
     }
   };
 
@@ -151,11 +226,21 @@ export function CompleteProfileForm() {
         department,
         graduationYear,
         isStudent,
+        hasProfileImage: !!profileImage,
       });
+
+      // プロフィール画像をアップロード（ある場合）
+      let photoURL = user.photoURL;
+      if (profileImage && profileImageFile) {
+        console.log('Uploading profile image...');
+        photoURL = await uploadProfileImage(user.uid);
+        console.log('Profile image uploaded:', photoURL);
+      }
 
       // Firebase Authのプロフィール更新
       await updateProfile(user, {
         displayName: displayName,
+        photoURL: photoURL,
       });
       console.log('Firebase Auth profile updated');
 
@@ -167,7 +252,7 @@ export function CompleteProfileForm() {
         graduationYear: parseInt(graduationYear),
         isStudent,
         email: user.email,
-        photoURL: user.photoURL,
+        photoURL: photoURL,
         emailVerified: user.emailVerified,
         profileCompleted: true, // プロフィール完成フラグを設定
         updatedAt: new Date(),
@@ -296,6 +381,86 @@ export function CompleteProfileForm() {
         <p className="mt-1 text-xs text-gray-500">
           レビューに表示される名前です
         </p>
+      </div>
+
+      {/* プロフィール画像 */}
+      <div>
+        <label className="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
+          プロフィール画像
+        </label>
+        <div className="flex items-center space-x-4">
+          {/* プレビュー画像 */}
+          <div className="relative">
+            <div className="w-20 h-20 rounded-full overflow-hidden bg-gray-100 dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-600">
+              {profileImage ? (
+                <img
+                  src={profileImage}
+                  alt="プロフィール画像"
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                  <svg
+                    className="w-8 h-8 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                    />
+                  </svg>
+                </div>
+              )}
+            </div>
+            {isUploadingImage && (
+              <div className="absolute inset-0 bg-black bg-opacity-50 rounded-full flex items-center justify-center">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
+              </div>
+            )}
+          </div>
+
+          {/* アップロードボタン */}
+          <div className="flex-1">
+            <input
+              type="file"
+              id="profileImage"
+              accept="image/*"
+              onChange={handleImageSelect}
+              className="hidden"
+              disabled={isLoading || isUploadingImage}
+            />
+            <label
+              htmlFor="profileImage"
+              className={`inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition ${
+                isLoading || isUploadingImage
+                  ? 'opacity-50 cursor-not-allowed'
+                  : ''
+              }`}
+            >
+              <svg
+                className="w-4 h-4 mr-2"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                />
+              </svg>
+              画像を選択
+            </label>
+            <p className="mt-1 text-xs text-gray-500">
+              JPEG、PNG形式 / 5MB以下 / 200×200pxに自動リサイズされます
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* ステータス */}
