@@ -63,8 +63,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
    */
   const refreshSession = useCallback(async () => {
     if (user) {
-      await user.getIdToken(true); // 強制的に新しいトークンを取得
-      await createSession(user);
+      try {
+        await user.getIdToken(true); // 強制的に新しいトークンを取得
+        await createSession(user);
+      } catch (error) {
+        console.error('Session refresh error:', error);
+      }
     }
   }, [user, createSession]);
 
@@ -82,30 +86,67 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [router]);
 
   useEffect(() => {
+    let intervalId: NodeJS.Timeout | null = null;
+
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
+
+      // ユーザー状態を更新
       setUser(user);
 
-      if (user) {
-        await createSession(user);
-
-        // トークンの自動更新（50分ごと）
-        const interval = setInterval(
-          async () => {
-            await refreshSession();
-          },
-          50 * 60 * 1000
-        );
-
-        return () => clearInterval(interval);
-      } else {
-        await fetch('/api/auth/session', { method: 'DELETE' });
+      // 既存のインターバルをクリア
+      if (intervalId) {
+        clearInterval(intervalId);
+        intervalId = null;
       }
 
+      if (user) {
+        try {
+          // セッション作成
+          await createSession(user);
+
+          // トークンの自動更新（50分ごと）
+          intervalId = setInterval(
+            async () => {
+              console.log('Refreshing token...');
+              try {
+                const newToken = await user.getIdToken(true);
+                await fetch('/api/auth/session', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({ idToken: newToken }),
+                });
+              } catch (error) {
+                console.error('Token refresh error:', error);
+              }
+            },
+            50 * 60 * 1000
+          );
+        } catch (error) {
+          console.error('Session setup error:', error);
+        }
+      } else {
+        // ユーザーがログアウトした場合
+        try {
+          await fetch('/api/auth/session', { method: 'DELETE' });
+        } catch (error) {
+          console.error('Session deletion error:', error);
+        }
+      }
+
+      // 必ずloadingをfalseに設定
       setLoading(false);
     });
 
-    return () => unsubscribe();
-  }, [createSession, refreshSession]);
+    // クリーンアップ
+    return () => {
+      unsubscribe();
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+  }, [createSession]);
 
   return (
     <AuthContext.Provider value={{ user, loading, signOut, refreshSession }}>

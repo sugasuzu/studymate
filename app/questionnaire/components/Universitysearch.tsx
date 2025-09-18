@@ -32,13 +32,22 @@ export function UniversitySearch({
   const containerRef = useRef<HTMLDivElement>(null);
   const searchCache = useRef<Map<string, University[]>>(new Map());
 
+  // initialUniversitiesを参照として保持
+  const initialUniversitiesRef = useRef(initialUniversities);
+
   const debouncedSearchTerm = useDebounce(searchTerm, 800);
+
+  // initialUniversitiesが変更されたときのみ更新
+  useEffect(() => {
+    initialUniversitiesRef.current = initialUniversities;
+    setUniversities(initialUniversities);
+  }, [initialUniversities]);
 
   // Server Actionを使用した検索
   const performSearch = useCallback(
     async (keyword: string) => {
       if (keyword.length < 2) {
-        setUniversities(initialUniversities);
+        setUniversities(initialUniversitiesRef.current);
         return;
       }
 
@@ -71,7 +80,7 @@ export function UniversitySearch({
         setIsLoading(false);
       }
     },
-    [initialUniversities]
+    []
   );
 
   useEffect(() => {
@@ -79,14 +88,13 @@ export function UniversitySearch({
       performSearch(debouncedSearchTerm);
       setShowDropdown(true);
     } else if (!debouncedSearchTerm) {
-      setUniversities(initialUniversities);
+      setUniversities(initialUniversitiesRef.current);
       setShowDropdown(false);
     }
   }, [
     debouncedSearchTerm,
     performSearch,
     selectedUniversity,
-    initialUniversities,
   ]);
 
   // 外部クリックでドロップダウンを閉じる
