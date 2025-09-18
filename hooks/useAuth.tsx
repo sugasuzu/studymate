@@ -89,7 +89,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let intervalId: NodeJS.Timeout | null = null;
 
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-
       // ユーザー状態を更新
       setUser(user);
 

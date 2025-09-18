@@ -22,11 +22,15 @@ export function UniversitySearch({
   initialUniversities = [],
 }: UniversitySearchProps) {
   // initialUniversitiesをメモ化して参照を安定化
-  const memoizedInitialUniversities = useMemo(() => initialUniversities, [initialUniversities]);
+  const memoizedInitialUniversities = useMemo(
+    () => initialUniversities,
+    [initialUniversities]
+  );
 
   const [searchTerm, setSearchTerm] = useState('');
-  const [universities, setUniversities] =
-    useState<University[]>(memoizedInitialUniversities);
+  const [universities, setUniversities] = useState<University[]>(
+    memoizedInitialUniversities
+  );
   const [isLoading, setIsLoading] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [selectedUniversity, setSelectedUniversity] =

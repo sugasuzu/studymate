@@ -1,7 +1,7 @@
 // app/auth/login/components/LoginForm.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -12,7 +12,7 @@ import {
 import { auth } from '@/lib/firebase';
 import { useAuth } from '@/hooks/useAuth';
 
-export function LoginForm() {
+function LoginFormContent() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
@@ -238,5 +238,18 @@ export function LoginForm() {
         </button>
       </form>
     </>
+  );
+}
+
+export function LoginForm() {
+  return (
+    <Suspense fallback={
+      <div className="text-center py-8">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+        <p className="text-gray-600 dark:text-gray-400">読み込み中...</p>
+      </div>
+    }>
+      <LoginFormContent />
+    </Suspense>
   );
 }
