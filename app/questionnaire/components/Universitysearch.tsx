@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { searchUniversities } from '@/lib/actions/universities';
 import { useDebounce } from '@/hooks/useDebounce';
 
@@ -21,9 +21,12 @@ export function UniversitySearch({
   onUniversitySelect,
   initialUniversities = [],
 }: UniversitySearchProps) {
+  // initialUniversitiesをメモ化して参照を安定化
+  const memoizedInitialUniversities = useMemo(() => initialUniversities, [initialUniversities]);
+
   const [searchTerm, setSearchTerm] = useState('');
   const [universities, setUniversities] =
-    useState<University[]>(initialUniversities);
+    useState<University[]>(memoizedInitialUniversities);
   const [isLoading, setIsLoading] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [selectedUniversity, setSelectedUniversity] =
@@ -32,22 +35,18 @@ export function UniversitySearch({
   const containerRef = useRef<HTMLDivElement>(null);
   const searchCache = useRef<Map<string, University[]>>(new Map());
 
-  // initialUniversitiesを参照として保持
-  const initialUniversitiesRef = useRef(initialUniversities);
-
   const debouncedSearchTerm = useDebounce(searchTerm, 800);
 
-  // initialUniversitiesが変更されたときのみ更新
+  // memoizedInitialUniversitiesが変更されたときのみ更新
   useEffect(() => {
-    initialUniversitiesRef.current = initialUniversities;
-    setUniversities(initialUniversities);
-  }, [initialUniversities]);
+    setUniversities(memoizedInitialUniversities);
+  }, [memoizedInitialUniversities]);
 
   // Server Actionを使用した検索
   const performSearch = useCallback(
     async (keyword: string) => {
       if (keyword.length < 2) {
-        setUniversities(initialUniversitiesRef.current);
+        setUniversities(memoizedInitialUniversities);
         return;
       }
 
@@ -80,7 +79,7 @@ export function UniversitySearch({
         setIsLoading(false);
       }
     },
-    []
+    [memoizedInitialUniversities]
   );
 
   useEffect(() => {
@@ -88,13 +87,14 @@ export function UniversitySearch({
       performSearch(debouncedSearchTerm);
       setShowDropdown(true);
     } else if (!debouncedSearchTerm) {
-      setUniversities(initialUniversitiesRef.current);
+      setUniversities(memoizedInitialUniversities);
       setShowDropdown(false);
     }
   }, [
     debouncedSearchTerm,
     performSearch,
     selectedUniversity,
+    memoizedInitialUniversities,
   ]);
 
   // 外部クリックでドロップダウンを閉じる

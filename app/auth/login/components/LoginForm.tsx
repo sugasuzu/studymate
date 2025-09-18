@@ -1,8 +1,8 @@
 // app/auth/login/components/LoginForm.tsx
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
   signInWithEmailAndPassword,
@@ -10,6 +10,7 @@ import {
   GoogleAuthProvider,
 } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
+import { useAuth } from '@/hooks/useAuth';
 
 export function LoginForm() {
   const [email, setEmail] = useState('');
@@ -18,6 +19,21 @@ export function LoginForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectUrl = searchParams.get('redirect') || '/my';
+  const { user, loading } = useAuth();
+
+  // 認証済みの場合は自動的にリダイレクト
+  useEffect(() => {
+    if (!loading && user) {
+      // ユーザーが既に認証されている場合
+      const timer = setTimeout(() => {
+        router.push(redirectUrl);
+      }, 100); // 少し遅延を入れて確実にリダイレクト
+
+      return () => clearTimeout(timer);
+    }
+  }, [user, loading, router, redirectUrl]);
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,8 +41,14 @@ export function LoginForm() {
     setError(null);
 
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-      router.push('/my');
+      const userCredential = await signInWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
+
+      // ログイン成功後、useEffectでリダイレクトされる
+      console.log('Email login successful:', userCredential.user.uid);
     } catch (error: unknown) {
       console.error('Login error:', error);
 
@@ -44,7 +66,6 @@ export function LoginForm() {
           ? (error as { code: string }).code
           : '';
       setError(errorMessages[errorCode] || 'ログインに失敗しました');
-    } finally {
       setIsLoading(false);
     }
   };
@@ -62,18 +83,42 @@ export function LoginForm() {
         result.user.metadata.creationTime ===
         result.user.metadata.lastSignInTime;
 
+      console.log('Google login successful:', result.user.uid);
+
       if (isNewUser) {
         router.push('/auth/complete-profile');
-      } else {
-        router.push('/my');
       }
+      // 既存ユーザーの場合は、useEffectでリダイレクトされる
     } catch (error: unknown) {
       console.error('Google login error:', error);
-      setError('Googleアカウントでのログインに失敗しました');
-    } finally {
+
+      // ポップアップがキャンセルされた場合
+      if (error && typeof error === 'object' && 'code' in error) {
+        const errorCode = (error as { code: string }).code;
+        if (errorCode === 'auth/popup-closed-by-user') {
+          setError('ログインがキャンセルされました');
+        } else if (errorCode === 'auth/cancelled-popup-request') {
+          // 別のポップアップが開いている場合
+          return;
+        } else {
+          setError('Googleアカウントでのログインに失敗しました');
+        }
+      } else {
+        setError('ログインに失敗しました');
+      }
       setIsLoading(false);
     }
   };
+
+  // 既に認証済みでローディング中の場合
+  if (!loading && user) {
+    return (
+      <div className="text-center py-8">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+        <p className="text-gray-600 dark:text-gray-400">リダイレクト中...</p>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -82,7 +127,7 @@ export function LoginForm() {
         type="button"
         onClick={handleGoogleLogin}
         disabled={isLoading}
-        className="w-full flex items-center justify-center gap-3 px-6 py-3 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition disabled:opacity-50"
+        className="w-full flex items-center justify-center gap-3 px-6 py-3 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition disabled:opacity-50 disabled:cursor-not-allowed"
       >
         <svg className="w-5 h-5" viewBox="0 0 24 24">
           <path
@@ -103,7 +148,7 @@ export function LoginForm() {
           />
         </svg>
         <span className="font-medium text-gray-700 dark:text-gray-200">
-          Googleでログイン
+          {isLoading ? 'ログイン中...' : 'Googleでログイン'}
         </span>
       </button>
 

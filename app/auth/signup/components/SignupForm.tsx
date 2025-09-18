@@ -1,13 +1,14 @@
 // app/auth/signup/components/SignupForm.tsx
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   createUserWithEmailAndPassword,
   sendEmailVerification,
-  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   GoogleAuthProvider,
 } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
@@ -21,6 +22,36 @@ export function SignupForm() {
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const router = useRouter();
+
+  // Googleサインアップのリダイレクト結果を処理
+  useEffect(() => {
+    const handleRedirectResult = async () => {
+      try {
+        const result = await getRedirectResult(auth);
+        if (result) {
+          setIsLoading(true);
+          console.log('Google signup successful:', result.user.uid);
+
+          // 初回ログインかチェック
+          const isNewUser =
+            result.user.metadata.creationTime ===
+            result.user.metadata.lastSignInTime;
+
+          if (isNewUser) {
+            router.push('/auth/complete-profile');
+          } else {
+            router.push('/my');
+          }
+        }
+      } catch (error: unknown) {
+        console.error('Google signup redirect error:', error);
+        setError('Googleアカウントでの登録に失敗しました');
+        setIsLoading(false);
+      }
+    };
+
+    handleRedirectResult();
+  }, [router]);
 
   const validateForm = (): boolean => {
     const errors: Record<string, string> = {};
@@ -92,12 +123,11 @@ export function SignupForm() {
 
     try {
       const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
-      router.push('/auth/complete-profile');
+      // ポップアップではなくリダイレクトを使用してCORSエラーを回避
+      await signInWithRedirect(auth, provider);
     } catch (error: unknown) {
       console.error('Google signup error:', error);
       setError('Googleアカウントでの登録に失敗しました');
-    } finally {
       setIsLoading(false);
     }
   };
