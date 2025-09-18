@@ -1,6 +1,7 @@
+// app/questionnaire/components/Universitysearch.tsx
 'use client';
 
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { searchUniversities } from '@/lib/actions/universities';
 import { useDebounce } from '@/hooks/useDebounce';
 
@@ -21,16 +22,8 @@ export function UniversitySearch({
   onUniversitySelect,
   initialUniversities = [],
 }: UniversitySearchProps) {
-  // initialUniversitiesをメモ化して参照を安定化
-  const memoizedInitialUniversities = useMemo(
-    () => initialUniversities,
-    [initialUniversities]
-  );
-
   const [searchTerm, setSearchTerm] = useState('');
-  const [universities, setUniversities] = useState<University[]>(
-    memoizedInitialUniversities
-  );
+  const [universities, setUniversities] = useState<University[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [selectedUniversity, setSelectedUniversity] =
@@ -41,65 +34,62 @@ export function UniversitySearch({
 
   const debouncedSearchTerm = useDebounce(searchTerm, 800);
 
-  // memoizedInitialUniversitiesが変更されたときのみ更新
+  // 初期化時のみinitialUniversitiesをセット
   useEffect(() => {
-    setUniversities(memoizedInitialUniversities);
-  }, [memoizedInitialUniversities]);
+    if (initialUniversities && initialUniversities.length > 0) {
+      setUniversities(initialUniversities);
+    }
+  }, []); // 空の依存配列で初回のみ実行
 
   // Server Actionを使用した検索
-  const performSearch = useCallback(
-    async (keyword: string) => {
-      if (keyword.length < 2) {
-        setUniversities(memoizedInitialUniversities);
-        return;
-      }
+  const performSearch = useCallback(async (keyword: string) => {
+    if (keyword.length < 2) {
+      // 検索語が短い場合は空配列をセット
+      setUniversities([]);
+      return;
+    }
 
-      // キャッシュチェック
-      const cachedResult = searchCache.current.get(keyword);
-      if (cachedResult) {
-        setUniversities(cachedResult);
-        return;
-      }
+    // キャッシュチェック
+    const cachedResult = searchCache.current.get(keyword);
+    if (cachedResult) {
+      setUniversities(cachedResult);
+      return;
+    }
 
-      setIsLoading(true);
-      setError(null);
+    setIsLoading(true);
+    setError(null);
 
-      try {
-        const result = await searchUniversities(keyword);
+    try {
+      const result = await searchUniversities(keyword);
 
-        if (result.success) {
-          // キャッシュに保存
-          searchCache.current.set(keyword, result.data.universities);
-          setUniversities(result.data.universities);
-        } else {
-          setError(result.error);
-          setUniversities([]);
-        }
-      } catch (err) {
-        console.error('University search failed:', err);
-        setError('検索中にエラーが発生しました');
+      if (result.success) {
+        // キャッシュに保存
+        searchCache.current.set(keyword, result.data.universities);
+        setUniversities(result.data.universities);
+      } else {
+        setError(result.error);
         setUniversities([]);
-      } finally {
-        setIsLoading(false);
       }
-    },
-    [memoizedInitialUniversities]
-  );
+    } catch (err) {
+      console.error('University search failed:', err);
+      setError('検索中にエラーが発生しました');
+      setUniversities([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
+  // 検索実行
   useEffect(() => {
     if (debouncedSearchTerm && !selectedUniversity) {
       performSearch(debouncedSearchTerm);
       setShowDropdown(true);
     } else if (!debouncedSearchTerm) {
-      setUniversities(memoizedInitialUniversities);
+      // 検索語が空の場合
+      setUniversities([]);
       setShowDropdown(false);
     }
-  }, [
-    debouncedSearchTerm,
-    performSearch,
-    selectedUniversity,
-    memoizedInitialUniversities,
-  ]);
+  }, [debouncedSearchTerm, performSearch, selectedUniversity]);
 
   // 外部クリックでドロップダウンを閉じる
   useEffect(() => {
@@ -132,6 +122,12 @@ export function UniversitySearch({
     }
   };
 
+  const handleInputFocus = () => {
+    if (searchTerm.length >= 2) {
+      setShowDropdown(true);
+    }
+  };
+
   return (
     <div className="relative" ref={containerRef}>
       <label
@@ -146,12 +142,13 @@ export function UniversitySearch({
           id="university"
           value={searchTerm}
           onChange={(e) => handleInputChange(e.target.value)}
-          onFocus={() => setShowDropdown(true)}
+          onFocus={handleInputFocus}
           className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white pr-10"
           placeholder="大学名を入力して検索"
           required
           aria-autocomplete="list"
           aria-controls="university-dropdown"
+          aria-expanded={showDropdown}
         />
         {isLoading && (
           <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
