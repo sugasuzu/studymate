@@ -8,7 +8,7 @@ import { auth, db } from '@/lib/firebase';
 import { UniversitySearch } from '@/app/questionnaire/components/Universitysearch';
 
 interface ProfileEditFormProps {
-  initialProfile: any;
+  initialProfile: Record<string, unknown> | null;
   userId: string;
 }
 
@@ -19,11 +19,11 @@ export function ProfileEditForm({
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
-    displayName: initialProfile?.displayName || '',
-    universityName: initialProfile?.universityName || '',
-    universityDepartment: initialProfile?.universityDepartment || '',
-    graduationYear: initialProfile?.graduationYear || '',
-    isStudent: initialProfile?.isStudent ?? true,
+    displayName: String(initialProfile?.displayName || ''),
+    universityName: String(initialProfile?.universityName || ''),
+    universityDepartment: String(initialProfile?.universityDepartment || ''),
+    graduationYear: String(initialProfile?.graduationYear || ''),
+    isStudent: Boolean(initialProfile?.isStudent ?? true),
   });
 
   const handleSubmit = async (e: React.FormEvent) => {

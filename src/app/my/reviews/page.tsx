@@ -91,29 +91,32 @@ export default async function MyReviewsPage() {
         ) : (
           /* レビューリスト */
           <div className="space-y-6">
-            {reviews.map((review: any) => (
+            {reviews.map((review: Record<string, unknown>, index: number) => (
               <div
-                key={review.id}
+                key={String(review.id || index)}
                 className="bg-white dark:bg-gray-900 rounded-xl shadow-lg p-8 hover:shadow-xl transition"
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     {/* 教材情報 */}
-                    {review.materials?.map((material: any, index: number) => (
-                      <div key={index} className="mb-6">
-                        <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-                          {material.materialName}
-                        </h3>
-                        {material.materialBarcode && (
-                          <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
-                            ISBN: {material.materialBarcode}
-                          </p>
-                        )}
-                        <p className="text-gray-600 dark:text-gray-300 line-clamp-3">
-                          {material.materialReview}
-                        </p>
-                      </div>
-                    ))}
+                    {Array.isArray(review.materials) &&
+                      review.materials.map(
+                        (material: Record<string, unknown>, index: number) => (
+                          <div key={index} className="mb-6">
+                            <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                              {String(material.materialName || '')}
+                            </h3>
+                            {Boolean(material.materialBarcode) && (
+                              <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
+                                ISBN: {String(material.materialBarcode)}
+                              </p>
+                            )}
+                            <p className="text-gray-600 dark:text-gray-300 line-clamp-3">
+                              {String(material.materialReview || '')}
+                            </p>
+                          </div>
+                        )
+                      )}
 
                     {/* メタ情報 */}
                     <div className="flex items-center gap-6 text-sm text-gray-500 dark:text-gray-400">
@@ -132,7 +135,10 @@ export default async function MyReviewsPage() {
                           />
                         </svg>
                         {new Date(
-                          review.submittedAt?.seconds * 1000 || Date.now()
+                          (review.submittedAt as { seconds?: number })?.seconds
+                            ? (review.submittedAt as { seconds: number })
+                                .seconds * 1000
+                            : Date.now()
                         ).toLocaleDateString('ja-JP')}
                       </span>
                       <span className="flex items-center gap-1">

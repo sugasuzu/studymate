@@ -12,7 +12,13 @@ export default async function BookmarksPage() {
   }
 
   // TODO: ブックマーク機能の実装後、実際のデータを取得
-  const bookmarks: any[] = [];
+  const bookmarks: Array<{
+    id: string;
+    title: string;
+    author: string;
+    rating: number;
+    reviewCount: number;
+  }> = [];
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white dark:from-gray-900 dark:to-gray-800">
@@ -72,7 +78,7 @@ export default async function BookmarksPage() {
         ) : (
           /* ブックマークリスト */
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {bookmarks.map((bookmark: any) => (
+            {bookmarks.map((bookmark) => (
               <div
                 key={bookmark.id}
                 className="bg-white dark:bg-gray-900 rounded-xl shadow-lg p-6 hover:shadow-xl transition"

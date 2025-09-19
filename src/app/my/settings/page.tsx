@@ -1,4 +1,4 @@
-import { getSessionUser, getUserProfile } from '@/lib/auth-server';
+import { getSessionUser } from '@/lib/auth-server';
 import { redirect } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
@@ -10,7 +10,7 @@ export default async function SettingsPage() {
     redirect('/auth/login');
   }
 
-  const profile = await getUserProfile(sessionUser.uid);
+  // const profile = await getUserProfile(sessionUser.uid);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white dark:from-gray-900 dark:to-gray-800">

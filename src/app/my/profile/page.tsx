@@ -14,21 +14,34 @@ export default async function ProfileEditPage() {
   const profile = await getUserProfile(sessionUser.uid);
 
   // Timestamp型を文字列に変換してClient Componentに渡せるようにする
-  const serializeTimestamp = (timestamp: any) => {
+  const serializeTimestamp = (timestamp: unknown): string | null => {
     if (!timestamp) return null;
     if (timestamp instanceof Date) return timestamp.toISOString();
-    if (typeof timestamp.toDate === 'function') return timestamp.toDate().toISOString();
-    if (typeof timestamp.seconds === 'number') {
-      return new Date(timestamp.seconds * 1000 + Math.floor(timestamp.nanoseconds / 1000000)).toISOString();
+    if (typeof timestamp === 'object' && timestamp !== null) {
+      const timestampObj = timestamp as Record<string, unknown>;
+      if (typeof timestampObj.toDate === 'function') {
+        return (timestampObj.toDate() as Date).toISOString();
+      }
+      if (
+        typeof timestampObj.seconds === 'number' &&
+        typeof timestampObj.nanoseconds === 'number'
+      ) {
+        return new Date(
+          timestampObj.seconds * 1000 +
+            Math.floor(timestampObj.nanoseconds / 1000000)
+        ).toISOString();
+      }
     }
     return null;
   };
 
-  const serializedProfile = profile ? {
-    ...profile,
-    createdAt: serializeTimestamp(profile.createdAt),
-    updatedAt: serializeTimestamp(profile.updatedAt),
-  } : null;
+  const serializedProfile = profile
+    ? {
+        ...profile,
+        createdAt: serializeTimestamp(profile.createdAt),
+        updatedAt: serializeTimestamp(profile.updatedAt),
+      }
+    : null;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white dark:from-gray-900 dark:to-gray-800">
@@ -45,7 +58,10 @@ export default async function ProfileEditPage() {
 
         {/* フォーム */}
         <div className="bg-white dark:bg-gray-900 rounded-xl shadow-lg p-8">
-          <ProfileEditForm initialProfile={serializedProfile} userId={sessionUser.uid} />
+          <ProfileEditForm
+            initialProfile={serializedProfile}
+            userId={sessionUser.uid}
+          />
         </div>
       </main>
     </div>

@@ -1,12 +1,5 @@
 import { getSessionUser, getUserProfile } from '@/lib/auth-server';
-import {
-  collection,
-  query,
-  where,
-  getDocs,
-  orderBy,
-  limit,
-} from 'firebase/firestore';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
