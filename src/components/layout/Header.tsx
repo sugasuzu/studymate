@@ -132,7 +132,7 @@ export function Header() {
               // 認証済みユーザー向けメニュー
               <div className="flex items-center space-x-6">
                 <Link
-                  href="/questionnaire"
+                  href="/my/reviews/new"
                   className="text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400 transition"
                 >
                   レビュー投稿
