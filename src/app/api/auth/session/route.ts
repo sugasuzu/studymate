@@ -1,4 +1,16 @@
-// app/api/auth/session/route.ts
+/**
+ * @file セッション管理用API Route
+ *
+ * NOTE: コーディング規約ではServer Actionsの使用が推奨されていますが、
+ * このエンドポイントは以下の理由によりAPI Routeとして実装しています：
+ *
+ * 1. ミドルウェア（middleware.ts）からのセッション検証で使用
+ * 2. クッキー操作がServer Actionsでは制限される
+ * 3. クライアント側からの直接的なHTTPリクエストが必要
+ *
+ * 将来的にNext.jsのServer Actions機能が拡張された場合は移行を検討します。
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
 
 const SESSION_COOKIE_NAME = 'session';

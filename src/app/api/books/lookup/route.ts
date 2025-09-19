@@ -1,4 +1,17 @@
-// 書籍のバーコード読み取りに関してはサーバーアクションではなくAPI Routerを使う
+/**
+ * @file 書籍情報検索用API Route
+ * 
+ * NOTE: コーディング規約ではServer Actionsの使用が推奨されていますが、
+ * このエンドポイントは以下の理由によりAPI Routeとして実装しています：
+ * 
+ * 1. バーコードスキャナー（Quagga2）からの非同期リクエストに対応
+ * 2. 外部API（Google Books API、楽天Books API）へのプロキシとして機能
+ * 3. レスポンスヘッダーのカスタマイズが必要（CORS対応など）
+ * 4. キャッシュ制御の細かい設定が必要
+ * 
+ * 将来的には部分的にServer Actionsへの移行を検討しますが、
+ * リアルタイムスキャン機能のためにはAPI Routeが適切です。
+ */
 
 import { NextRequest, NextResponse } from 'next/server';
 
